@@ -26,6 +26,21 @@ enum TicketPriority {
   URGENT
 }
 
+enum FreightBasis {
+  FULL     // Frete Cheio
+  TON      // Frete Tonelada
+}
+
+enum Incoterm {
+  CIF
+  FOB
+}
+
+enum FleetType {
+  FROTA
+  TERCEIRO
+}
+
 model User {
   id           String         @id @default(cuid())
   username     String         @unique
@@ -48,6 +63,31 @@ model Ticket {
   priority    TicketPriority @default(MEDIUM)
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
+
+  // ================================
+  // Novos campos para transporte
+  // ================================
+  originCity        String?
+  originUF          String?       @db.VarChar(2)
+  originIBGEId      Int?
+  destinationCity   String?
+  destinationUF     String?       @db.VarChar(2)
+  destinationIBGEId Int?
+
+  freightBasis      FreightBasis  @default(FULL)
+  incoterm          Incoterm      @default(CIF)
+  paymentTerm       String?
+  paymentType       String?
+  cargoWeight       Decimal?      @db.Decimal(10,3)
+  billingCompany    String?
+  plateCavalo       String?
+  plateCarreta1     String?
+  plateCarreta2     String?
+  plateCarreta3     String?
+  fleetType         FleetType     @default(FROTA)
+  thirdPartyPayment Decimal?      @db.Decimal(10,2)
+  serviceTaker      String?
+  // ================================
 
   createdById String
   createdBy   User           @relation("TicketsCreated", fields: [createdById], references: [id])
