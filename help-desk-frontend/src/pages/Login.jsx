@@ -8,35 +8,35 @@ import InputField from "../components/InputField";
 
 
 export default function Login() {
-    const [username, setEmail] = useState("");
+    const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [remember, setRemember] = useState(true);
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
 
-const navigate = useNavigate();
-const location = useLocation();
-const { login } = useAuth();
-const from = location.state?.from || "/dashboard";
+    const navigate = useNavigate();
+    const location = useLocation();
+    const { login } = useAuth();
+    const from = location.state?.from || "/dashboard";
 
-async function handleSubmit(e) {
-    e.preventDefault();
-    setErrors({});
-    setLoading(true);
-    try {
-        if (!username || !password) {
-            setErrors({ form: "Informe usuário e senha." });
-            return;
+    async function handleSubmit(e) {
+        e.preventDefault();
+        setErrors({});
+        setLoading(true);
+        try {
+            if (!username || !password) {
+                setErrors({ form: "Informe usuário e senha." });
+                return;
+            }
+            await login(username, password);
+            navigate(from, { replace: true });
+        } catch (e) {
+            setErrors({ form: e?.message || "Falha no login" });
+        } finally {
+            setLoading(false);
         }
-        await login(username, password);
-        navigate(from, { replace: true });
-    } catch (e) {
-        setErrors({ form: e?.message || "Falha no login" });
-    } finally {
-        setLoading(false);
     }
-}
 
 
 
@@ -45,35 +45,12 @@ async function handleSubmit(e) {
         if (!username) next.username = "Informe seu usuário.";
         else if (username.length < 3) next.username = "O usuário deve ter pelo menos 3 caracteres.";
 
-
         if (!password) next.password = "Informe sua senha.";
         else if (password.length < 6) next.password = "A senha deve ter pelo menos 6 caracteres.";
-
 
         setErrors(next);
         return Object.keys(next).length === 0;
     }
-
-
-    async function onSubmit(e) {
-        e.preventDefault();
-        if (!validate()) return;
-        setLoading(true);
-
-
-        try {
-            // TODO: integrar com seu backend de autenticação
-            await new Promise((r) => setTimeout(r, 800));
-            console.log({ username, password, remember });
-            // redirecionar após login bem-sucedido
-            // navigate("/dashboard");
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
-    }
-
 
     return (
         <AuthBackground>
@@ -82,12 +59,18 @@ async function handleSubmit(e) {
                 subtitle="Entre com suas credenciais para continuar"
             >
                 <form onSubmit={handleSubmit} className="grid gap-5">
+                    {errors.form && (
+                        <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-3">
+                            <p className="text-sm text-red-400" role="alert">{errors.form}</p>
+                        </div>
+                    )}
+                    
                     <InputField
                         id="username"
                         label="Usuário"
                         type="text"
                         value={username}
-                        onChange={(e) => setEmail(e.target.value)}
+                        onChange={(e) => setUsername(e.target.value)}
                         placeholder="Digite seu usuário"
                         autoComplete="username"
                         error={errors.username}
