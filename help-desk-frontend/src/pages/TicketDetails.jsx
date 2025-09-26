@@ -1,45 +1,18 @@
 import { useEffect, useState } from "react";
 import AppLayout from "../components/AppLayout";
 import Button from "../components/Button";
-import { addComment, getTicket, listComments, updateTicket } from "../api/tickets";
+import { getTicket, listComments, addComment, updateTicket } from "../api/tickets";
 import { useNavigate, useParams } from "react-router-dom";
-import { useAuth } from "../context/AuthContext.jsx";
-
-const statusMapToPt = {
-  OPEN: "aberto",
-  IN_PROGRESS: "andamento",
-  RESOLVED: "resolvido",
-  CLOSED: "resolvido",
-};
-const statusMapFromPt = {
-  aberto: "OPEN",
-  andamento: "IN_PROGRESS",
-  resolvido: "RESOLVED",
-  fechado: "CLOSED",
-};
-const priorityToPt = {
-  LOW: "baixa",
-  MEDIUM: "media",
-  HIGH: "alta",
-  URGENT: "critica",
-};
-const priorityFromPt = {
-  baixa: "LOW",
-  media: "MEDIUM",
-  alta: "HIGH",
-  critica: "URGENT",
-};
 
 export default function TicketDetails() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { user } = useAuth();
   const [ticket, setTicket] = useState(null);
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
   const [newComment, setNewComment] = useState("");
+  const [error, setError] = useState("");
 
   async function load() {
     setLoading(true);
@@ -54,15 +27,15 @@ export default function TicketDetails() {
       setLoading(false);
     }
   }
-
-  useEffect(() => {
-    load();
-  }, [id]);
+  useEffect(() => { load(); }, [id]);
 
   async function saveField(field, value) {
     setSaving(true);
     try {
-      const payload = { [field]: value };
+      const payload =
+        field === "cargoWeight" || field === "thirdPartyPayment"
+          ? { [field]: value === "" || value == null ? null : Number(value) }
+          : { [field]: value };
       const updated = await updateTicket(id, payload);
       setTicket(updated);
     } catch (e) {
@@ -75,163 +48,283 @@ export default function TicketDetails() {
   async function submitComment(e) {
     e.preventDefault();
     if (!newComment.trim()) return;
-    try {
-      await addComment(id, newComment.trim());
-      setNewComment("");
-      const cs = await listComments(id);
-      setComments(cs);
-    } catch (e) {
-      setError(e?.message || "Erro ao comentar");
-    }
+    await addComment(id, newComment.trim());
+    setNewComment("");
+    const cs = await listComments(id);
+    setComments(cs);
   }
-
-  const statusPt = statusMapToPt[ticket?.status] || "aberto";
-  const priorityPt = priorityToPt[ticket?.priority] || "media";
 
   return (
     <AppLayout current="/tickets" onNavigate={(to) => navigate(to)}>
       {loading ? (
-        <div className="rounded-2xl border border-borda p-6 text-texto/70">
-          Carregando...
-        </div>
+        <div className="rounded-2xl border border-borda p-6 text-texto/70">Carregando...</div>
       ) : !ticket ? (
-        <div className="rounded-2xl border border-borda p-6 text-red-300">
-          Ticket não encontrado
-        </div>
+        <div className="rounded-2xl border border-borda p-6 text-red-300">Ticket não encontrado</div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-          <section className="rounded-2xl border border-borda p-5">
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div>
-                <h1 className="text-xl font-semibold text-titulo">
-                  {ticket.title}
-                </h1>
-                <p className="text-sm text-texto/70">
-                  #{String(ticket.id).slice(0, 6)} • Criado por{" "}
-                  <strong>{ticket.createdBy?.username}</strong>
-                </p>
-              </div>
-              <Button onClick={() => navigate("/tickets")}>Voltar</Button>
+        <>
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <div>
+              <h1 className="text-xl font-semibold text-titulo">{ticket.title}</h1>
+              <p className="text-sm text-texto/70">
+                #{String(ticket.id).slice(0, 6)} • Criado por <strong>{ticket.createdBy?.username}</strong>
+              </p>
             </div>
+            <Button onClick={() => navigate("/tickets")}>Voltar</Button>
+          </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-sm text-texto/80">
-                  Status
-                </label>
-                <select
-                  className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
-                  value={statusPt}
-                  onChange={(e) =>
-                    saveField("status", statusMapFromPt[e.target.value])
-                  }
-                >
-                  <option value="aberto">Aberto</option>
-                  <option value="andamento">Em andamento</option>
-                  <option value="resolvido">Resolvido</option>
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-sm text-texto/80">
-                  Prioridade
-                </label>
-                <select
-                  className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
-                  value={priorityPt}
-                  onChange={(e) =>
-                    saveField("priority", priorityFromPt[e.target.value])
-                  }
-                >
-                  <option value="baixa">Baixa</option>
-                  <option value="media">Média</option>
-                  <option value="alta">Alta</option>
-                  <option value="critica">Crítica</option>
-                </select>
-              </div>
-              {user?.role === "ADMIN" && (
-                <div className="sm:col-span-2">
-                  <label className="mb-1 block text-sm text-texto/80">
-                    Atribuído para (ID do usuário)
-                  </label>
+          {/* GRID PRINCIPAL: ESQUERDA (Transporte) | DIREITA (Operacional) */}
+          <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
+            {/* ESQUERDA — TRANSPORTE */}
+            <section className="rounded-2xl border border-borda p-5">
+              <h2 className="mb-4 text-lg font-medium text-titulo">Transporte</h2>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                {/* Origem/Destino só leitura (gravados na criação). Se quiser editar, me avisa que coloco um seletor IBGE aqui também. */}
+                <div>
+                  <label className="mb-1 block text-sm text-texto/80">Origem</label>
+                  <div className="rounded-xl border border-borda px-3 py-2 text-texto/90">
+                    {ticket.originCity && ticket.originUF ? `${ticket.originCity}/${ticket.originUF}` : "—"}
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm text-texto/80">Destino</label>
+                  <div className="rounded-xl border border-borda px-3 py-2 text-texto/90">
+                    {ticket.destinationCity && ticket.destinationUF ? `${ticket.destinationCity}/${ticket.destinationUF}` : "—"}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm text-texto/80">Tipo de Frete</label>
+                  <select
+                    className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
+                    value={ticket.freightBasis}
+                    onChange={(e) => saveField("freightBasis", e.target.value)}
+                  >
+                    <option value="FULL">Frete Cheio</option>
+                    <option value="TON">Frete Tonelada</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm text-texto/80">Modalidade</label>
+                  <select
+                    className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
+                    value={ticket.incoterm}
+                    onChange={(e) => saveField("incoterm", e.target.value)}
+                  >
+                    <option value="CIF">CIF</option>
+                    <option value="FOB">FOB</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm text-texto/80">Prazo para pagamento</label>
                   <input
                     className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
-                    value={ticket.assignedToId || ""}
-                    onChange={(e) =>
-                      saveField("assignedToId", e.target.value || null)
-                    }
-                    placeholder="Opcional"
+                    defaultValue={ticket.paymentTerm || ""}
+                    onBlur={(e) => saveField("paymentTerm", e.target.value)}
                   />
                 </div>
+                <div>
+                  <label className="mb-1 block text-sm text-texto/80">Tipo de pagamento</label>
+                  <input
+                    className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
+                    defaultValue={ticket.paymentType || ""}
+                    onBlur={(e) => saveField("paymentType", e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm text-texto/80">Peso da carga</label>
+                  <input
+                    type="number"
+                    step="0.001"
+                    min="0"
+                    className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
+                    defaultValue={ticket.cargoWeight ?? ""}
+                    onBlur={(e) => saveField("cargoWeight", e.target.value)}
+                  />
+                  <p className="mt-1 text-xs text-texto/60">Padrão do banco (ex.: toneladas).</p>
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm text-texto/80">Empresa de faturamento</label>
+                  <input
+                    className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
+                    defaultValue={ticket.billingCompany || ""}
+                    onBlur={(e) => saveField("billingCompany", e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm text-texto/80">Placa (Cavalo)</label>
+                  <input
+                    className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
+                    defaultValue={ticket.plateCavalo || ""}
+                    onBlur={(e) => saveField("plateCavalo", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm text-texto/80">Placa (1ª carreta)</label>
+                  <input
+                    className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
+                    defaultValue={ticket.plateCarreta1 || ""}
+                    onBlur={(e) => saveField("plateCarreta1", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm text-texto/80">Placa (2ª carreta / Dolly)</label>
+                  <input
+                    className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
+                    defaultValue={ticket.plateCarreta2 || ""}
+                    onBlur={(e) => saveField("plateCarreta2", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm text-texto/80">Placa (3ª carreta)</label>
+                  <input
+                    className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
+                    defaultValue={ticket.plateCarreta3 || ""}
+                    onBlur={(e) => saveField("plateCarreta3", e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm text-texto/80">Propriedade do veículo</label>
+                  <select
+                    className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
+                    value={ticket.fleetType}
+                    onChange={(e) => saveField("fleetType", e.target.value)}
+                  >
+                    <option value="FROTA">Frota</option>
+                    <option value="TERCEIRO">Terceiro</option>
+                  </select>
+                </div>
+
+                {ticket.fleetType === "TERCEIRO" && (
+                  <div>
+                    <label className="mb-1 block text-sm text-texto/80">Valor p/ terceiro</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
+                      defaultValue={ticket.thirdPartyPayment ?? ""}
+                      onBlur={(e) => saveField("thirdPartyPayment", e.target.value)}
+                    />
+                  </div>
+                )}
+
+                <div className="sm:col-span-2">
+                  <label className="mb-1 block text-sm text-texto/80">Tomador de serviço</label>
+                  <input
+                    className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
+                    defaultValue={ticket.serviceTaker || ""}
+                    onBlur={(e) => saveField("serviceTaker", e.target.value)}
+                  />
+                </div>
+              </div>
+            </section>
+
+            {/* DIREITA — OPERACIONAL */}
+            <section className="rounded-2xl border border-borda p-5">
+              <h2 className="mb-4 text-lg font-medium text-titulo">Operacional</h2>
+
+              <div className="grid gap-4">
+                <div>
+                  <label className="mb-1 block text-sm text-texto/80">Com quem está (atribuído para)</label>
+                  <div className="text-xs text-texto/60 mb-1">
+                    Atual: <strong>{ticket.assignedTo?.username || "—"}</strong>
+                  </div>
+                  <input
+                    className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
+                    placeholder="ID do usuário (opcional)"
+                    defaultValue={ticket.assignedToId || ""}
+                    onBlur={(e) => saveField("assignedToId", e.target.value || null)}
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm text-texto/80">Status</label>
+                  <select
+                    className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
+                    value={ticket.status}
+                    onChange={(e) => saveField("status", e.target.value)}
+                  >
+                    <option value="OPEN">Aberto</option>
+                    <option value="IN_PROGRESS">Em andamento</option>
+                    <option value="RESOLVED">Resolvido</option>
+                    <option value="CLOSED">Fechado</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm text-texto/80">Prioridade</label>
+                  <select
+                    className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
+                    value={ticket.priority}
+                    onChange={(e) => saveField("priority", e.target.value)}
+                  >
+                    <option value="LOW">Baixa</option>
+                    <option value="MEDIUM">Média</option>
+                    <option value="HIGH">Alta</option>
+                    <option value="URGENT">Crítica</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm text-texto/80">Descrição</label>
+                  <textarea
+                    rows={6}
+                    className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
+                    defaultValue={ticket.description || ""}
+                    onBlur={(e) => saveField("description", e.target.value)}
+                  />
+                </div>
+
+                <div className="rounded-xl border border-borda p-3 text-sm text-texto/80">
+                  <div><strong>Criado em:</strong> {new Date(ticket.createdAt).toLocaleString()}</div>
+                  <div><strong>Atualizado em:</strong> {new Date(ticket.updatedAt).toLocaleString()}</div>
+                  <div><strong>Criado por:</strong> {ticket.createdBy?.username}</div>
+                </div>
+
+                {saving && <span className="text-sm text-texto/70">Salvando...</span>}
+                {error && <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-2 text-red-300 text-sm">{error}</div>}
+              </div>
+            </section>
+          </div>
+
+          {/* COMENTÁRIOS (abaixo das duas colunas) */}
+          <section className="mt-6 rounded-2xl border border-borda p-5">
+            <h2 className="mb-3 text-lg font-medium text-titulo">Comentários</h2>
+            <div className="space-y-3">
+              {comments.map((c) => (
+                <div key={c.id} className="rounded-xl border border-borda p-3">
+                  <p className="text-sm text-texto/80">
+                    <strong>{c.author?.username}</strong> • {new Date(c.createdAt).toLocaleString()}
+                  </p>
+                  <p className="mt-1 text-texto">{c.body}</p>
+                </div>
+              ))}
+              {comments.length === 0 && (
+                <div className="rounded-xl border border-borda p-4 text-texto/70">Sem comentários ainda.</div>
               )}
             </div>
 
-            <div className="mt-6">
-              <h2 className="text-lg font-medium text-titulo">Descrição</h2>
-              <p className="mt-2 whitespace-pre-wrap text-texto/90">
-                {ticket.description}
-              </p>
-            </div>
-
-            <div className="mt-6">
-              <h2 className="text-lg font-medium text-titulo">Comentários</h2>
-              <div className="mt-3 space-y-3">
-                {comments.map((c) => (
-                  <div key={c.id} className="rounded-xl border border-borda p-3">
-                    <p className="text-sm text-texto/80">
-                      <strong>{c.author?.username}</strong> •{" "}
-                      {new Date(c.createdAt).toLocaleString()}
-                    </p>
-                    <p className="mt-1 text-texto">{c.body}</p>
-                  </div>
-                ))}
-                {comments.length === 0 && (
-                  <div className="rounded-xl border border-borda p-4 text-texto/70">
-                    Sem comentários ainda.
-                  </div>
-                )}
+            <form onSubmit={submitComment} className="mt-3 grid gap-2">
+              <textarea
+                rows={3}
+                className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Escreva um comentário..."
+              />
+              <div className="flex gap-2">
+                <Button type="submit">Comentar</Button>
+                {saving && <span className="text-sm text-texto/70">Salvando...</span>}
               </div>
-
-              <form onSubmit={submitComment} className="mt-3 grid gap-2">
-                <textarea
-                  rows={3}
-                  className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Escreva um comentário..."
-                />
-                <div className="flex gap-2">
-                  <Button type="submit">Comentar</Button>
-                  {saving && (
-                    <span className="text-sm text-texto/70">Salvando...</span>
-                  )}
-                </div>
-              </form>
-            </div>
+            </form>
           </section>
-
-          <aside className="space-y-4">
-            <div className="rounded-2xl border border-borda p-4">
-              <h3 className="text-sm font-semibold text-titulo">Informações</h3>
-              <ul className="mt-2 text-sm text-texto/80 space-y-1">
-                <li>
-                  <strong>Criado em:</strong>{" "}
-                  {new Date(ticket.createdAt).toLocaleString()}
-                </li>
-                <li>
-                  <strong>Atualizado em:</strong>{" "}
-                  {new Date(ticket.updatedAt).toLocaleString()}
-                </li>
-                <li>
-                  <strong>Criado por:</strong> {ticket.createdBy?.username}
-                </li>
-                <li>
-                  <strong>Atribuído para:</strong>{" "}
-                  {ticket.assignedTo?.username || "-"}
-                </li>
-              </ul>
-            </div>
-          </aside>
-        </div>
+        </>
       )}
     </AppLayout>
   );
