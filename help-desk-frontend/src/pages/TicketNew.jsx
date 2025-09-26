@@ -4,18 +4,41 @@ import Button from "../components/Button";
 import { createTicket } from "../api/tickets";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
+import CityUFInput from "../components/CityUFInput";
 
 export default function TicketNew() {
   const navigate = useNavigate();
   const { user } = useAuth();
+
+  const [origin, setOrigin] = useState({ city: "", uf: "SC", ibgeId: undefined });
+  const [destination, setDestination] = useState({ city: "", uf: "SC", ibgeId: undefined });
+
   const [form, setForm] = useState({
     title: "",
     description: "",
+    // Operacional
     priority: "MEDIUM",
+    // Transporte
+    freightBasis: "FULL",
+    incoterm: "CIF",
+    paymentTerm: "",
+    paymentType: "",
+    cargoWeight: "",
+    billingCompany: "",
+    plateCavalo: "",
+    plateCarreta1: "",
+    plateCarreta2: "",
+    plateCarreta3: "",
+    fleetType: "FROTA",
+    thirdPartyPayment: "",
+    serviceTaker: "",
+    // Admin
     assignedToId: "",
   });
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const setv = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -26,8 +49,34 @@ export default function TicketNew() {
         title: form.title,
         description: form.description,
         priority: form.priority,
+
+        originCity: origin.city || undefined,
+        originUF: origin.uf || undefined,
+        originIBGEId: origin.ibgeId || undefined,
+        destinationCity: destination.city || undefined,
+        destinationUF: destination.uf || undefined,
+        destinationIBGEId: destination.ibgeId || undefined,
+
+        freightBasis: form.freightBasis,
+        incoterm: form.incoterm,
+        paymentTerm: form.paymentTerm || undefined,
+        paymentType: form.paymentType || undefined,
+        cargoWeight: form.cargoWeight ? Number(form.cargoWeight) : undefined,
+        billingCompany: form.billingCompany || undefined,
+        plateCavalo: form.plateCavalo || undefined,
+        plateCarreta1: form.plateCarreta1 || undefined,
+        plateCarreta2: form.plateCarreta2 || undefined,
+        plateCarreta3: form.plateCarreta3 || undefined,
+        fleetType: form.fleetType,
+        thirdPartyPayment:
+          form.fleetType === "TERCEIRO" && form.thirdPartyPayment
+            ? Number(form.thirdPartyPayment)
+            : undefined,
+        serviceTaker: form.serviceTaker || undefined,
+
         assignedToId: form.assignedToId || undefined,
       };
+
       const t = await createTicket(payload);
       navigate(`/tickets/${t.id}`, { replace: true });
     } catch (e) {
@@ -41,83 +90,217 @@ export default function TicketNew() {
     <AppLayout current="/tickets/new" onNavigate={(to) => navigate(to)}>
       <section className="mb-6">
         <h1 className="text-2xl font-semibold text-titulo">Novo Chamado</h1>
-        <p className="text-texto/70">Abra um chamado descrevendo o problema</p>
+        <p className="text-texto/70">Abra um chamado de transporte</p>
       </section>
 
-      <form onSubmit={handleSubmit} className="grid gap-4 max-w-2xl">
-        <div>
-          <label className="mb-1 block text-sm text-texto/80">Título</label>
-          <input
-            className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto focus:outline-none focus:ring-2 focus:ring-azul-claro/30"
-            value={form.title}
-            onChange={(e) => setForm({ ...form, title: e.target.value })}
-            required
-          />
-        </div>
+      <form onSubmit={handleSubmit} className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
+        {/* ESQUERDA — TRANSPORTE */}
+        <section className="rounded-2xl border border-borda p-5">
+          <h2 className="mb-4 text-lg font-medium text-titulo">Transporte</h2>
 
-        <div>
-          <label className="mb-1 block text-sm text-texto/80">Descrição</label>
-          <textarea
-            rows={6}
-            className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto focus:outline-none focus:ring-2 focus:ring-azul-claro/30"
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-            required
-          />
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="mb-1 block text-sm text-texto/80">
-              Prioridade
-            </label>
-            <select
-              className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto focus:outline-none"
-              value={form.priority}
-              onChange={(e) => setForm({ ...form, priority: e.target.value })}
-            >
-              <option value="LOW">Baixa</option>
-              <option value="MEDIUM">Média</option>
-              <option value="HIGH">Alta</option>
-              <option value="URGENT">Crítica</option>
-            </select>
-          </div>
-
-          {user?.role === "ADMIN" && (
+          <div className="grid gap-4">
             <div>
-              <label className="mb-1 block text-sm text-texto/80">
-                Atribuir para (ID do usuário)
-              </label>
+              <label className="mb-1 block text-sm text-texto/80">Título</label>
               <input
                 className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto focus:outline-none focus:ring-2 focus:ring-azul-claro/30"
-                value={form.assignedToId}
-                onChange={(e) =>
-                  setForm({ ...form, assignedToId: e.target.value })
-                }
-                placeholder="Opcional"
+                value={form.title}
+                onChange={setv("title")}
+                required
               />
             </div>
-          )}
-        </div>
 
-        {error && (
-          <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-red-300 text-sm">
-            {error}
+            <div className="grid gap-6 sm:grid-cols-2">
+              <CityUFInput label="Origem (Cidade/UF)" value={origin} onChange={setOrigin} defaultUF="SC" />
+              <CityUFInput label="Destino (Cidade/UF)" value={destination} onChange={setDestination} defaultUF="SC" />
+            </div>
+
+            <div className="grid gap-6 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm text-texto/80">Tipo de Frete</label>
+                <div className="flex gap-3">
+                  <label className="inline-flex items-center gap-2 text-sm">
+                    <input type="radio" name="freightBasis" value="FULL" checked={form.freightBasis === "FULL"} onChange={setv("freightBasis")} />
+                    Frete Cheio
+                  </label>
+                  <label className="inline-flex items-center gap-2 text-sm">
+                    <input type="radio" name="freightBasis" value="TON" checked={form.freightBasis === "TON"} onChange={setv("freightBasis")} />
+                    Frete Tonelada
+                  </label>
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm text-texto/80">Modalidade (CIF/FOB)</label>
+                <div className="flex gap-3">
+                  <label className="inline-flex items-center gap-2 text-sm">
+                    <input type="radio" name="incoterm" value="CIF" checked={form.incoterm === "CIF"} onChange={setv("incoterm")} />
+                    CIF
+                  </label>
+                  <label className="inline-flex items-center gap-2 text-sm">
+                    <input type="radio" name="incoterm" value="FOB" checked={form.incoterm === "FOB"} onChange={setv("incoterm")} />
+                    FOB
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-6 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm text-texto/80">Prazo para pagamento</label>
+                <input
+                  className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
+                  placeholder="ex.: à vista, 15 dias, 30 dias"
+                  value={form.paymentTerm}
+                  onChange={setv("paymentTerm")}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm text-texto/80">Tipo de pagamento</label>
+                <input
+                  className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
+                  placeholder="ex.: PIX, Boleto, TED"
+                  value={form.paymentType}
+                  onChange={setv("paymentType")}
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-6 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm text-texto/80">Peso da carga</label>
+                <input
+                  type="number"
+                  step="0.001"
+                  min="0"
+                  className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
+                  placeholder="ex.: 28.500"
+                  value={form.cargoWeight}
+                  onChange={setv("cargoWeight")}
+                />
+                <p className="mt-1 text-xs text-texto/60">Use o mesmo padrão do banco (ex.: toneladas).</p>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm text-texto/80">Empresa de faturamento</label>
+                <input
+                  className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
+                  value={form.billingCompany}
+                  onChange={setv("billingCompany")}
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-6 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm text-texto/80">Placa (Cavalo)</label>
+                <input className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto" value={form.plateCavalo} onChange={setv("plateCavalo")} />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm text-texto/80">Placa (1ª carreta)</label>
+                <input className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto" value={form.plateCarreta1} onChange={setv("plateCarreta1")} />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm text-texto/80">Placa (2ª carreta / Dolly)</label>
+                <input className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto" value={form.plateCarreta2} onChange={setv("plateCarreta2")} />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm text-texto/80">Placa (3ª carreta)</label>
+                <input className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto" value={form.plateCarreta3} onChange={setv("plateCarreta3")} />
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm text-texto/80">Propriedade do veículo</label>
+              <div className="flex gap-3">
+                <label className="inline-flex items-center gap-2 text-sm">
+                  <input type="radio" name="fleetType" value="FROTA" checked={form.fleetType === "FROTA"} onChange={setv("fleetType")} />
+                  Frota
+                </label>
+                <label className="inline-flex items-center gap-2 text-sm">
+                  <input type="radio" name="fleetType" value="TERCEIRO" checked={form.fleetType === "TERCEIRO"} onChange={setv("fleetType")} />
+                  Terceiro
+                </label>
+              </div>
+              {form.fleetType === "TERCEIRO" && (
+                <div className="mt-3">
+                  <label className="mb-1 block text-sm text-texto/80">Valor de pagamento p/ terceiro</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
+                    value={form.thirdPartyPayment}
+                    onChange={setv("thirdPartyPayment")}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm text-texto/80">Tomador de serviço</label>
+              <input
+                className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
+                value={form.serviceTaker}
+                onChange={setv("serviceTaker")}
+              />
+            </div>
           </div>
-        )}
+        </section>
 
-        <div className="flex gap-2">
-          <Button type="submit" loading={loading}>
-            Criar
-          </Button>
-          <button
-            type="button"
-            className="rounded-xl border border-borda px-4 py-2 text-texto"
-            onClick={() => navigate(-1)}
-          >
-            Cancelar
-          </button>
-        </div>
+        {/* DIREITA — OPERACIONAL */}
+        <section className="rounded-2xl border border-borda p-5">
+          <h2 className="mb-4 text-lg font-medium text-titulo">Operacional</h2>
+
+          <div className="grid gap-4">
+            <div>
+              <label className="mb-1 block text-sm text-texto/80">Prioridade</label>
+              <select
+                className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
+                value={form.priority}
+                onChange={setv("priority")}
+              >
+                <option value="LOW">Baixa</option>
+                <option value="MEDIUM">Média</option>
+                <option value="HIGH">Alta</option>
+                <option value="URGENT">Crítica</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm text-texto/80">Descrição</label>
+              <textarea
+                rows={8}
+                className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
+                value={form.description}
+                onChange={setv("description")}
+                required
+              />
+            </div>
+
+            {user?.role === "ADMIN" && (
+              <div>
+                <label className="mb-1 block text-sm text-texto/80">Atribuir para (ID do usuário)</label>
+                <input
+                  className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
+                  value={form.assignedToId}
+                  onChange={setv("assignedToId")}
+                  placeholder="Opcional"
+                />
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <Button type="submit" loading={loading}>Criar</Button>
+              <button type="button" className="rounded-xl border border-borda px-4 py-2 text-texto" onClick={() => navigate(-1)}>
+                Cancelar
+              </button>
+            </div>
+
+            {error && (
+              <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-red-300 text-sm">
+                {error}
+              </div>
+            )}
+          </div>
+        </section>
       </form>
     </AppLayout>
   );
