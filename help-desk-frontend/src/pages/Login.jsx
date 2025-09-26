@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../context/AuthContext.jsx";
 import AuthBackground from "../components/AuthBackground";
 import AuthCard from "../components/AuthCard";
 import Button from "../components/Button";
@@ -6,18 +8,42 @@ import InputField from "../components/InputField";
 
 
 export default function Login() {
-    const [email, setEmail] = useState("");
+    const [username, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [remember, setRemember] = useState(true);
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
 
+const navigate = useNavigate();
+const location = useLocation();
+const { login } = useAuth();
+const from = location.state?.from || "/dashboard";
+
+async function handleSubmit(e) {
+    e.preventDefault();
+    setErrors({});
+    setLoading(true);
+    try {
+        if (!username || !password) {
+            setErrors({ form: "Informe usuário e senha." });
+            return;
+        }
+        await login(username, password);
+        navigate(from, { replace: true });
+    } catch (e) {
+        setErrors({ form: e?.message || "Falha no login" });
+    } finally {
+        setLoading(false);
+    }
+}
+
+
 
     function validate() {
         const next = {};
-        if (!email) next.email = "Informe seu usuário.";
-        else if (email.length < 3) next.email = "O usuário deve ter pelo menos 3 caracteres.";
+        if (!username) next.username = "Informe seu usuário.";
+        else if (username.length < 3) next.username = "O usuário deve ter pelo menos 3 caracteres.";
 
 
         if (!password) next.password = "Informe sua senha.";
@@ -38,7 +64,7 @@ export default function Login() {
         try {
             // TODO: integrar com seu backend de autenticação
             await new Promise((r) => setTimeout(r, 800));
-            console.log({ email, password, remember });
+            console.log({ username, password, remember });
             // redirecionar após login bem-sucedido
             // navigate("/dashboard");
         } catch (err) {
@@ -55,16 +81,16 @@ export default function Login() {
                 title="Acessar conta"
                 subtitle="Entre com suas credenciais para continuar"
             >
-                <form onSubmit={onSubmit} className="grid gap-5">
+                <form onSubmit={handleSubmit} className="grid gap-5">
                     <InputField
-                        id="email"
+                        id="username"
                         label="Usuário"
                         type="text"
-                        value={email}
+                        value={username}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="Digite seu usuário"
                         autoComplete="username"
-                        error={errors.email}
+                        error={errors.username}
                     />
 
 
