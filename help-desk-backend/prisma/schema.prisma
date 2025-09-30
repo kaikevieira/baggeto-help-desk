@@ -41,6 +41,12 @@ enum FleetType {
   TERCEIRO
 }
 
+enum TollType {
+  COM_PEDAGIO
+  SEM_PEDAGIO
+  CLIENTE_PAGA_PEDAGIO
+}
+
 model User {
   id           Int            @id @default(autoincrement())
   username     String         @unique
@@ -90,7 +96,7 @@ model Ticket {
   serviceTaker      String?
   
   // Novos campos para terceiros
-  hasToll           Boolean?      // Com ou sem pedágio
+  hasToll           TollType?     // Tipo de pedágio
   cteRepresentative String?       // Representante do CTE
   manifestRepresentative String?  // Representante do manifesto
   // ================================
