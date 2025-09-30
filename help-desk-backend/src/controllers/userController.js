@@ -61,7 +61,10 @@ export const userController = {
 
   update: async (req, res, next) => {
     try {
-      const { id } = req.params;
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: 'ID inválido' });
+      }
 
       // se mudou username, garante unicidade
       if (req.body.username) {
