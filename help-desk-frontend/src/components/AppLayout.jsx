@@ -1,4 +1,4 @@
-import Sidebar from "./Sidebar";
+import Sidebar from "./SideBar";
 
 export default function AppLayout({ onNavigate, onLogout, children }) {
   return (
