@@ -13,7 +13,7 @@ router.put('/:id', requireAuth, validate(ticketController.updateValidate), ticke
 router.delete('/:id', requireAuth, ticketController.remove);
 
 // Comentários
-router.get('/:id/comments', requireAuth, ticketController.listComments);
+router.get('/:id/comments', requireAuth, ticketController.getComments);
 router.post('/:id/comments', requireAuth, ticketController.addComment);
 
 export default router;
