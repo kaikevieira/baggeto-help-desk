@@ -33,7 +33,7 @@ export default function TicketNew() {
     thirdPartyPayment: "",
     serviceTaker: "",
     // Novos campos para terceiros
-    hasToll: true, // true = com pedágio, false = sem pedágio
+    hasToll: "COM_PEDAGIO", // COM_PEDAGIO, SEM_PEDAGIO, CLIENTE_PAGA_PEDAGIO
     cteRepresentative: "",
     manifestRepresentative: "",
     // Admin
@@ -242,14 +242,14 @@ export default function TicketNew() {
                   
                   <div>
                     <label className="mb-1 block text-sm text-texto/80">Frete inclui pedágio?</label>
-                    <div className="flex gap-3">
+                    <div className="flex flex-wrap gap-3">
                       <label className="inline-flex items-center gap-2 text-sm">
                         <input 
                           type="radio" 
                           name="hasToll" 
-                          value="true" 
-                          checked={form.hasToll === true} 
-                          onChange={() => setForm(f => ({ ...f, hasToll: true }))} 
+                          value="COM_PEDAGIO" 
+                          checked={form.hasToll === "COM_PEDAGIO"} 
+                          onChange={() => setForm(f => ({ ...f, hasToll: "COM_PEDAGIO" }))} 
                         />
                         Com pedágio
                       </label>
@@ -257,9 +257,9 @@ export default function TicketNew() {
                         <input 
                           type="radio" 
                           name="hasToll" 
-                          value="false" 
-                          checked={form.hasToll === false} 
-                          onChange={() => setForm(f => ({ ...f, hasToll: false }))} 
+                          value="SEM_PEDAGIO" 
+                          checked={form.hasToll === "SEM_PEDAGIO"} 
+                          onChange={() => setForm(f => ({ ...f, hasToll: "SEM_PEDAGIO" }))} 
                         />
                         Sem pedágio
                       </label>
@@ -267,9 +267,9 @@ export default function TicketNew() {
                         <input 
                           type="radio" 
                           name="hasToll" 
-                          value="false" 
-                          checked={form.hasToll === false} 
-                          onChange={() => setForm(f => ({ ...f, hasToll: false }))} 
+                          value="CLIENTE_PAGA_PEDAGIO" 
+                          checked={form.hasToll === "CLIENTE_PAGA_PEDAGIO"} 
+                          onChange={() => setForm(f => ({ ...f, hasToll: "CLIENTE_PAGA_PEDAGIO" }))} 
                         />
                         Cliente paga pedágio
                       </label>
