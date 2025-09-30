@@ -5,6 +5,7 @@ import { createTicket } from "../api/tickets";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import CityUFInput from "../components/CityUFInput";
+import UserSelect from "../components/UserSelect";
 
 export default function TicketNew() {
   const navigate = useNavigate();
@@ -12,6 +13,7 @@ export default function TicketNew() {
 
   const [origin, setOrigin] = useState({ city: "", uf: "SC", ibgeId: undefined });
   const [destination, setDestination] = useState({ city: "", uf: "SC", ibgeId: undefined });
+  const [assignedUser, setAssignedUser] = useState({ id: null, username: "", role: "" });
 
   const [form, setForm] = useState({
     title: "",
@@ -36,8 +38,6 @@ export default function TicketNew() {
     hasToll: "COM_PEDAGIO", // COM_PEDAGIO, SEM_PEDAGIO, CLIENTE_PAGA_PEDAGIO
     cteRepresentative: "",
     manifestRepresentative: "",
-    // Admin
-    assignedToId: "",
   });
 
   const [loading, setLoading] = useState(false);
@@ -81,7 +81,7 @@ export default function TicketNew() {
         cteRepresentative: form.cteRepresentative || undefined,
         manifestRepresentative: form.manifestRepresentative || undefined,
 
-        assignedToId: form.assignedToId || undefined,
+        assignedToId: assignedUser.id || undefined,
       };
 
       const t = await createTicket(payload);
@@ -342,15 +342,12 @@ export default function TicketNew() {
             </div>
 
             {user?.role === "ADMIN" && (
-              <div>
-                <label className="mb-1 block text-sm text-texto/80">Atribuir para (ID do usuário)</label>
-                <input
-                  className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
-                  value={form.assignedToId}
-                  onChange={setv("assignedToId")}
-                  placeholder="Opcional"
-                />
-              </div>
+              <UserSelect
+                label="Atribuir para"
+                value={assignedUser}
+                onChange={setAssignedUser}
+                placeholder="Selecione um usuário (opcional)"
+              />
             )}
 
             <div className="flex gap-2">
