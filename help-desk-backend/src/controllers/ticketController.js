@@ -31,6 +31,9 @@ const createSchema = z.object({
     fleetType: z.enum(['FROTA', 'TERCEIRO']).optional(),
     thirdPartyPayment: z.number().optional(),
     serviceTaker: z.string().optional(),
+    hasToll: z.boolean().optional(),
+    cteRepresentative: z.string().optional(),
+    manifestRepresentative: z.string().optional(),
   }),
 });
 
@@ -62,6 +65,9 @@ const updateSchema = z.object({
     fleetType: z.enum(['FROTA', 'TERCEIRO']).optional(),
     thirdPartyPayment: z.number().optional().nullable(),
     serviceTaker: z.string().optional(),
+    hasToll: z.boolean().optional(),
+    cteRepresentative: z.string().optional(),
+    manifestRepresentative: z.string().optional(),
   }),
 });
 
