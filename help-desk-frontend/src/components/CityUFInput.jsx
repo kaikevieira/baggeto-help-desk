@@ -53,8 +53,8 @@ export default function CityUFInput({
   // sugestões por nome
   const suggestions = useMemo(() => {
     const term = q.trim().toLowerCase();
-    if (!term) return cities.slice(0, 8);
-    return cities.filter((c) => c.nome.toLowerCase().includes(term)).slice(0, 8);
+    if (!term) return cities;
+    return cities.filter((c) => c.nome.toLowerCase().includes(term)).slice(0, 50);
   }, [q, cities]);
 
   const selectCity = (cityObj) => {
@@ -76,13 +76,13 @@ export default function CityUFInput({
             className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto placeholder:text-texto/50 focus:outline-none focus:ring-2 focus:ring-azul-claro/30"
           />
           {open && suggestions.length > 0 && (
-            <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-borda bg-[#101010]">
+            <div className="absolute z-20 mt-1 w-full max-h-60 overflow-y-auto rounded-xl border border-borda bg-[#101010] shadow-lg custom-scrollbar">
               {suggestions.map((s) => (
                 <button
                   type="button"
                   key={s.id}
                   onClick={() => selectCity(s)}
-                  className="block w-full px-3 py-2 text-left text-sm hover:bg-white/5"
+                  className="block w-full px-3 py-2 text-left text-sm hover:bg-white/5 hover:text-titulo transition-colors"
                 >
                   {s.nome}/{uf}
                 </button>
@@ -94,7 +94,13 @@ export default function CityUFInput({
         <select
           value={uf || ""}
           onChange={(e) => { setUf(e.target.value); setOpen(true); }}
-          className="rounded-xl border border-borda bg-transparent px-3 py-2 text-texto focus:outline-none"
+          className="custom-select rounded-xl border border-borda bg-[#101010] px-3 py-2 text-texto focus:outline-none focus:ring-2 focus:ring-azul-claro/30 appearance-none cursor-pointer hover:border-azul-claro/50 transition-colors"
+          style={{
+            backgroundImage: `url("data:image/svg+xml;charset=UTF-8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c1c1c1' stroke-width='2'><polyline points='6,9 12,15 18,9'></polyline></svg>")`,
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'right 8px center',
+            backgroundSize: '16px'
+          }}
         >
           <option value="" disabled>UF</option>
           {ufs.map((u) => (
