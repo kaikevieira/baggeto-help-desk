@@ -87,7 +87,7 @@ export default function TicketNew() {
   }
 
   return (
-    <AppLayout current="/tickets/new" onNavigate={(to) => navigate(to)}>
+    <AppLayout onNavigate={(to) => navigate(to)}>
       <section className="mb-6">
         <h1 className="text-2xl font-semibold text-titulo">Novo Chamado</h1>
         <p className="text-texto/70">Abra um chamado de transporte</p>
