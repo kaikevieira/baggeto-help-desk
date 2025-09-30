@@ -3,10 +3,10 @@ import React from "react";
 
 export default function AuthBackground({ children }) {
     return (
-        <div className="fixed inset-0 bg-fundo overflow-hidden">
+        <div className="min-h-screen bg-fundo">
 
             {/* page container */}
-            <div className="flex h-full w-full items-center justify-center p-6">
+            <div className="flex min-h-screen w-full items-center justify-center p-6">
                 {children}
             </div>
 
