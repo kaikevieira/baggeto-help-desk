@@ -5,6 +5,10 @@ export function listUsers(q = "") {
   return apiFetch("/users", { params: { q } });
 }
 
+export function getUsers() {
+  return listUsers();
+}
+
 // ADMIN only
 export function createUser({ username, password, role = "USER" }) {
   return apiFetch("/users", {
