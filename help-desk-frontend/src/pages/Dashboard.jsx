@@ -46,7 +46,7 @@ export default function Dashboard() {
   }, []); // eslint-disable-line
 
   return (
-    <AppLayout current="/dashboard" onNavigate={(to) => navigate(to)} onLogout={logout}>
+    <AppLayout onNavigate={(to) => navigate(to)} onLogout={logout}>
       <section className="mb-6">
         <h1 className="text-2xl font-semibold text-titulo">Dashboard</h1>
         <p className="text-texto/70">Visão geral dos chamados</p>
