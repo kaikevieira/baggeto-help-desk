@@ -66,7 +66,7 @@ export default function TicketDetails() {
             <div>
               <h1 className="text-xl font-semibold text-titulo">{ticket.title}</h1>
               <p className="text-sm text-texto/70">
-                #{String(ticket.id).slice(0, 6)} • Criado por <strong>{ticket.createdBy?.username}</strong>
+                #{ticket.id} • Criado por <strong>{ticket.createdBy?.username}</strong>
               </p>
             </div>
             <Button onClick={() => navigate("/tickets")}>Voltar</Button>
