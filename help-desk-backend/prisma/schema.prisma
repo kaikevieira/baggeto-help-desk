@@ -88,6 +88,11 @@ model Ticket {
   fleetType         FleetType     @default(FROTA)
   thirdPartyPayment Decimal?      @db.Decimal(10,2)
   serviceTaker      String?
+  
+  // Novos campos para terceiros
+  hasToll           Boolean?      // Com ou sem pedágio
+  cteRepresentative String?       // Representante do CTE
+  manifestRepresentative String?  // Representante do manifesto
   // ================================
 
   createdById Int
