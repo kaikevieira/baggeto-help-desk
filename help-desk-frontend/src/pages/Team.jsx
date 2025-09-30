@@ -304,7 +304,7 @@ export default function Team() {
                       </div>
                       <div className="min-w-0">
                         <div className="truncate text-texto">{u.username}</div>
-                        <div className="text-xs text-texto/60">ID: {u.id.slice(0, 6)}…</div>
+                        <div className="text-xs text-texto/60">ID: {u.id}</div>
                       </div>
                     </div>
                   </td>
