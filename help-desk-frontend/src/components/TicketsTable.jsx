@@ -21,7 +21,7 @@ export default function TicketsTable({ tickets = [], onView }) {
           {tickets.map((t) => (
             <tr key={t.id} className="hover:bg-white/5">
               <td className="px-4 py-3 text-texto">
-                {String(t.id).slice(0, 6)}
+                {t.id}
               </td>
               <td className="px-4 py-3 text-texto">{t.title}</td>
               <td className="px-4 py-3 text-texto">{t.client}</td>
