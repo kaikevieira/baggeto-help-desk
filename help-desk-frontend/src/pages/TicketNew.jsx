@@ -32,6 +32,10 @@ export default function TicketNew() {
     fleetType: "FROTA",
     thirdPartyPayment: "",
     serviceTaker: "",
+    // Novos campos para terceiros
+    hasToll: true, // true = com pedágio, false = sem pedágio
+    cteRepresentative: "",
+    manifestRepresentative: "",
     // Admin
     assignedToId: "",
   });
@@ -73,6 +77,9 @@ export default function TicketNew() {
             ? Number(form.thirdPartyPayment)
             : undefined,
         serviceTaker: form.serviceTaker || undefined,
+        hasToll: form.fleetType === "TERCEIRO" ? form.hasToll : undefined,
+        cteRepresentative: form.cteRepresentative || undefined,
+        manifestRepresentative: form.manifestRepresentative || undefined,
 
         assignedToId: form.assignedToId || undefined,
       };
@@ -220,16 +227,54 @@ export default function TicketNew() {
                 </label>
               </div>
               {form.fleetType === "TERCEIRO" && (
-                <div className="mt-3">
-                  <label className="mb-1 block text-sm text-texto/80">Valor de pagamento p/ terceiro</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
-                    value={form.thirdPartyPayment}
-                    onChange={setv("thirdPartyPayment")}
-                  />
+                <div className="mt-3 space-y-3">
+                  <div>
+                    <label className="mb-1 block text-sm text-texto/80">Valor de pagamento p/ terceiro</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
+                      value={form.thirdPartyPayment}
+                      onChange={setv("thirdPartyPayment")}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="mb-1 block text-sm text-texto/80">Frete inclui pedágio?</label>
+                    <div className="flex gap-3">
+                      <label className="inline-flex items-center gap-2 text-sm">
+                        <input 
+                          type="radio" 
+                          name="hasToll" 
+                          value="true" 
+                          checked={form.hasToll === true} 
+                          onChange={() => setForm(f => ({ ...f, hasToll: true }))} 
+                        />
+                        Com pedágio
+                      </label>
+                      <label className="inline-flex items-center gap-2 text-sm">
+                        <input 
+                          type="radio" 
+                          name="hasToll" 
+                          value="false" 
+                          checked={form.hasToll === false} 
+                          onChange={() => setForm(f => ({ ...f, hasToll: false }))} 
+                        />
+                        Sem pedágio
+                      </label>
+                      <label className="inline-flex items-center gap-2 text-sm">
+                        <input 
+                          type="radio" 
+                          name="hasToll" 
+                          value="false" 
+                          checked={form.hasToll === false} 
+                          onChange={() => setForm(f => ({ ...f, hasToll: false }))} 
+                        />
+                        Cliente paga pedágio
+                      </label>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -241,6 +286,27 @@ export default function TicketNew() {
                 value={form.serviceTaker}
                 onChange={setv("serviceTaker")}
               />
+            </div>
+
+            <div className="grid gap-6 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm text-texto/80">Representante do CTE</label>
+                <input
+                  className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
+                  placeholder="Nome do representante"
+                  value={form.cteRepresentative}
+                  onChange={setv("cteRepresentative")}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm text-texto/80">Representante do manifesto</label>
+                <input
+                  className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
+                  placeholder="Nome do representante"
+                  value={form.manifestRepresentative}
+                  onChange={setv("manifestRepresentative")}
+                />
+              </div>
             </div>
           </div>
         </section>
