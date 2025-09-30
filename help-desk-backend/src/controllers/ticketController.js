@@ -9,7 +9,7 @@ const createSchema = z.object({
     title: z.string().min(3),
     description: z.string().min(3),
     priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
-    assignedToId: z.string().optional(),
+    assignedToId: z.number().optional(),
 
     // Campos de transporte
     originCity: z.string().optional(),
@@ -40,7 +40,7 @@ const updateSchema = z.object({
     description: z.string().min(3).optional(),
     status: z.enum(['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED']).optional(),
     priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
-    assignedToId: z.string().nullable().optional(),
+    assignedToId: z.number().nullable().optional(),
 
     // Campos de transporte
     originCity: z.string().optional(),
@@ -75,32 +75,9 @@ export const ticketController = {
   create: async (req, res, next) => {
     try {
       const data = {
-        title: req.body.title,
-        description: req.body.description,
-        priority: req.body.priority ?? 'MEDIUM',
-        createdById: req.user.sub,
-        assignedToId: req.body.assignedToId || null,
-
-        // Novos campos
-        originCity: req.body.originCity,
-        originUF: req.body.originUF,
-        originIBGEId: req.body.originIBGEId,
-        destinationCity: req.body.destinationCity,
-        destinationUF: req.body.destinationUF,
-        destinationIBGEId: req.body.destinationIBGEId,
-        freightBasis: req.body.freightBasis,
-        incoterm: req.body.incoterm,
-        paymentTerm: req.body.paymentTerm,
-        paymentType: req.body.paymentType,
-        cargoWeight: req.body.cargoWeight,
-        billingCompany: req.body.billingCompany,
-        plateCavalo: req.body.plateCavalo,
-        plateCarreta1: req.body.plateCarreta1,
-        plateCarreta2: req.body.plateCarreta2,
-        plateCarreta3: req.body.plateCarreta3,
-        fleetType: req.body.fleetType,
-        thirdPartyPayment: req.body.thirdPartyPayment,
-        serviceTaker: req.body.serviceTaker,
+        ...req.body,
+        createdById: parseInt(req.user.sub),
+        assignedToId: req.body.assignedToId ? parseInt(req.body.assignedToId) : undefined,
       };
       const ticket = await ticketService.create(data);
       res.status(201).json(ticket);
@@ -129,7 +106,11 @@ export const ticketController = {
 
   get: async (req, res, next) => {
     try {
-      const ticket = await ticketService.get(req.params.id);
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: 'ID inválido' });
+      }
+      const ticket = await ticketService.get(id);
       if (!ticket) return res.status(404).json({ message: 'Ticket não encontrado' });
       res.json(ticket);
     } catch (e) {
@@ -139,7 +120,15 @@ export const ticketController = {
 
   update: async (req, res, next) => {
     try {
-      const updated = await ticketService.update(req.params.id, req.body);
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: 'ID inválido' });
+      }
+      const updateData = { ...req.body };
+      if (req.body.assignedToId) {
+        updateData.assignedToId = parseInt(req.body.assignedToId);
+      }
+      const updated = await ticketService.update(id, updateData);
       res.json(updated);
     } catch (e) {
       next(e);
@@ -148,8 +137,12 @@ export const ticketController = {
 
   remove: async (req, res, next) => {
     try {
-      await ticketService.remove(req.params.id);
-      res.status(204).send();
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: 'ID inválido' });
+      }
+      await ticketService.remove(id);
+      res.json({ message: 'Removido' });
     } catch (e) {
       next(e);
     }
@@ -157,19 +150,28 @@ export const ticketController = {
 
   addComment: async (req, res, next) => {
     try {
-      const comment = await ticketService.comment(req.params.id, req.user.sub, req.body.body);
-      res.status(201).json(comment);
+      const ticketId = parseInt(req.params.id);
+      const userId = parseInt(req.user.sub);
+      if (isNaN(ticketId) || isNaN(userId)) {
+        return res.status(400).json({ message: 'ID inválido' });
+      }
+      const comment = await ticketService.comment(ticketId, userId, req.body.body);
+      res.json(comment);
     } catch (e) {
       next(e);
     }
   },
 
-  listComments: async (req, res, next) => {
+  getComments: async (req, res, next) => {
     try {
-      const comments = await ticketService.comments(req.params.id);
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: 'ID inválido' });
+      }
+      const comments = await ticketService.comments(id);
       res.json(comments);
     } catch (e) {
       next(e);
     }
-  }
+  },
 };
