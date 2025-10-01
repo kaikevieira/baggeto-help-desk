@@ -63,7 +63,7 @@ model User {
 
 model Ticket {
   id          Int            @id @default(autoincrement())
-  ticketNumber String        @unique @default("")
+  ticketNumber String        @unique
   title       String
   description String
   status      TicketStatus   @default(OPEN)
