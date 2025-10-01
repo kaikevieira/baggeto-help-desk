@@ -10,7 +10,7 @@ import brazilSVGRaw from "../assets/brazil.svg?raw"; // coloque o brazil.svg em 
  *  - onChange: (newRouteStr) => void
  *  - height: altura máxima opcional do container (default 540)
  */
-export default function BrazilSVGRouteMap({ value = "", onChange, height = 540 }) {
+export default function BrazilSVGRouteMap({ value = "", onChange, height = "auto" }) {
   const wrapperRef = useRef(null);
   const svgHostRef = useRef(null); // div que recebe o SVG (inline)
   const [centers, setCenters] = useState({}); // { UF: {x,y} }
@@ -34,12 +34,14 @@ export default function BrazilSVGRouteMap({ value = "", onChange, height = 540 }
     const svg = svgHostRef.current.querySelector("svg");
     if (!svg) return;
 
-    // Responsividade básico
+    // Responsividade aprimorada
     svg.removeAttribute("width");
     svg.removeAttribute("height");
     svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+    svg.setAttribute("viewBox", svg.getAttribute("viewBox") || "0 0 1000 600");
     svg.style.width = "100%";
-    svg.style.height = "100%";
+    svg.style.height = "auto";
+    svg.style.maxHeight = "100%";
 
     // Ativa pointer-events e cursores
     svg.querySelectorAll("path[id^='BR-']").forEach((p) => {
@@ -126,30 +128,17 @@ export default function BrazilSVGRouteMap({ value = "", onChange, height = 540 }
   const clear = () => onChange?.("");
 
   return (
-    <div ref={wrapperRef} className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <label className="block text-sm font-medium text-titulo mb-1">Rota por Estados (mapa)</label>
-          <p className="text-xs text-texto/60">Clique nos estados na ordem da viagem</p>
-        </div>
-        {!!selected.length && (
-          <button onClick={clear} type="button" className="text-xs text-red-400 hover:text-red-300">Limpar rota</button>
-        )}
-      </div>
-
-      {!!selected.length && (
-        <div className="rounded-lg border border-borda bg-fundo/50 p-3">
-          <div className="text-sm text-titulo font-medium mb-1">Rota selecionada:</div>
-          <div className="text-azul-claro font-mono text-lg">{value}</div>
-        </div>
-      )}
-
-      {/* Container do mapa + overlay para linha e ordem */}
-      <div className="relative rounded-2xl border border-borda bg-gradient-to-br from-slate-800/50 to-slate-900/50 p-4">
-        <div className="aspect-[612/639] w-full">
+    <div ref={wrapperRef} className="w-full h-full flex items-center justify-center">
+      {/* Container do mapa responsivo sem fundo */}
+      <div className="relative w-full h-full max-w-4xl">
+        <div className="w-full" style={{ aspectRatio: "5/3" }}>
           <div ref={svgHostRef} className="w-full h-full select-none" />
           {/* Overlay via SVG separado para polyline e marcadores */}
-          <svg className="pointer-events-none absolute inset-0 w-full h-full" preserveAspectRatio="xMidYMid meet">
+          <svg 
+            className="pointer-events-none absolute inset-0 w-full h-full" 
+            preserveAspectRatio="xMidYMid meet"
+            viewBox="0 0 1000 600"
+          >
             {/* polyline conectando centros */}
             {selected.length >= 2 && (
               <polyline
@@ -176,26 +165,35 @@ export default function BrazilSVGRouteMap({ value = "", onChange, height = 540 }
             })}
           </svg>
         </div>
-
-        {/* Legenda compacta */}
-        <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-texto/70">
-          <span className="inline-flex items-center gap-1"><span className="inline-block h-3 w-3 rounded-sm bg-azul-claro/70"/> Selecionado</span>
-          <span className="inline-flex items-center gap-1"><span className="inline-block h-3 w-6 bg-current"/> Trajeto</span>
-          <span className="inline-flex items-center gap-1"><span className="inline-block h-3 w-3 rounded-full bg-azul-claro"/> Ordem</span>
-        </div>
       </div>
 
-      <div className="text-xs text-texto/50 space-y-1">
-        <p>• Clique novamente em um estado para remover ele e os posteriores.</p>
-        <p>• A ordem define o roteiro. Você pode misturar qualquer UF.</p>
-      </div>
-
-      {/* CSS util aplicável aos paths do mapa */}
+      {/* CSS util aplicável aos paths do mapa - melhorado para responsividade */}
       <style>{`
-        .mapsvg-hover { filter: brightness(1.15); }
-        path[id^='BR-'] { stroke: rgba(148,163,184,0.7); stroke-width: 1.2; }
-        path[id^='BR-']:not(.mapsvg-selected) { fill: rgba(100,116,139,0.35); }
-        path.mapsvg-selected { fill: rgba(14,165,233,0.65); }
+        .mapsvg-hover { filter: brightness(1.15); transition: filter 0.2s ease; }
+        path[id^='BR-'] { 
+          stroke: rgba(148,163,184,0.7); 
+          stroke-width: 1.2; 
+          transition: all 0.2s ease;
+        }
+        path[id^='BR-']:not(.mapsvg-selected) { 
+          fill: rgba(100,116,139,0.35); 
+        }
+        path.mapsvg-selected { 
+          fill: rgba(14,165,233,0.65); 
+          stroke: rgba(14,165,233,0.8);
+          stroke-width: 1.5;
+        }
+        
+        /* Responsividade aprimorada */
+        @media (max-width: 768px) {
+          path[id^='BR-'] { stroke-width: 1; }
+          path.mapsvg-selected { stroke-width: 1.2; }
+        }
+        
+        @media (max-width: 480px) {
+          path[id^='BR-'] { stroke-width: 0.8; }
+          path.mapsvg-selected { stroke-width: 1; }
+        }
       `}</style>
     </div>
   );
