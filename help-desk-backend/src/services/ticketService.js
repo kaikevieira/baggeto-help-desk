@@ -2,8 +2,15 @@ import { prisma } from '../db.js';
 
 export const ticketService = {
   create: async (data) => {
+    // Gera um número único para o ticket começando do 100000
+    const count = await prisma.ticket.count();
+    const ticketNumber = String(100000 + count + 1);
+    
     return prisma.ticket.create({
-      data,
+      data: {
+        ...data,
+        ticketNumber,
+      },
       include: {
         createdBy: true,
         assignedTo: true,
@@ -11,17 +18,44 @@ export const ticketService = {
     });
   },
 
-  list: async ({ page = 1, pageSize = 10, status, q }) => {
-    const where = {};
-    if (status) where.status = status;
+  list: async ({ page = 1, pageSize = 10, status, q, userId, userRole }) => {
+    let where = {};
+    
+    // Construir filtros de forma mais clara
+    const filters = [];
+    
+    // 1. Filtro de permissões (sempre primeiro para usuários não-admin)
+    if (userRole !== 'ADMIN') {
+      filters.push({
+        OR: [
+          { createdById: userId },
+          { assignedToId: userId }
+        ]
+      });
+    }
+    
+    // 2. Filtro de status
+    if (status) {
+      filters.push({ status: status });
+    }
+    
+    // 3. Filtro de busca
     if (q) {
-      where.OR = [
-        { title: { contains: q, mode: 'insensitive' } },
-        { description: { contains: q, mode: 'insensitive' } },
-        { originCity: { contains: q, mode: 'insensitive' } },
-        { destinationCity: { contains: q, mode: 'insensitive' } },
-        { billingCompany: { contains: q, mode: 'insensitive' } },
-      ];
+      filters.push({
+        OR: [
+          { title: { contains: q, mode: 'insensitive' } },
+          { description: { contains: q, mode: 'insensitive' } },
+          { originCity: { contains: q, mode: 'insensitive' } },
+          { destinationCity: { contains: q, mode: 'insensitive' } },
+          { billingCompany: { contains: q, mode: 'insensitive' } },
+          { ticketNumber: { contains: q, mode: 'insensitive' } }
+        ]
+      });
+    }
+    
+    // Combinar todos os filtros
+    if (filters.length > 0) {
+      where.AND = filters;
     }
 
     const [count, items] = await Promise.all([
@@ -30,7 +64,7 @@ export const ticketService = {
         where,
         skip: (page - 1) * pageSize,
         take: pageSize,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { updatedAt: 'desc' },
         include: {
           createdBy: true,
           assignedTo: true,
@@ -41,8 +75,9 @@ export const ticketService = {
     return [count, items];
   },
 
-  get: async (id) => {
-    return prisma.ticket.findUnique({
+  get: async (id, userId, userRole) => {
+    // Primeiro buscar o ticket pelo ID
+    const ticket = await prisma.ticket.findUnique({
       where: { id },
       include: {
         createdBy: true,
@@ -53,9 +88,35 @@ export const ticketService = {
         },
       },
     });
+
+    // Se não encontrou o ticket, retorna null
+    if (!ticket) {
+      return null;
+    }
+
+    // Verificar permissões para usuários não-admin
+    if (userRole !== 'ADMIN') {
+      if (ticket.createdById !== userId && ticket.assignedToId !== userId) {
+        return null; // Não tem permissão, simula que não encontrou
+      }
+    }
+
+    return ticket;
   },
 
-  update: async (id, data) => {
+  update: async (id, data, userId, userRole) => {
+    // Primeiro verificar se o usuário tem permissão para editar este ticket
+    if (userRole !== 'ADMIN') {
+      const ticket = await prisma.ticket.findUnique({
+        where: { id },
+        select: { createdById: true, assignedToId: true }
+      });
+      
+      if (!ticket || (ticket.createdById !== userId && ticket.assignedToId !== userId)) {
+        throw new Error('Permissão negada: você não pode editar este ticket');
+      }
+    }
+
     return prisma.ticket.update({
       where: { id },
       data,
@@ -66,7 +127,19 @@ export const ticketService = {
     });
   },
 
-  remove: async (id) => {
+  remove: async (id, userId, userRole) => {
+    // Primeiro verificar se o usuário tem permissão para remover este ticket
+    if (userRole !== 'ADMIN') {
+      const ticket = await prisma.ticket.findUnique({
+        where: { id },
+        select: { createdById: true, assignedToId: true }
+      });
+      
+      if (!ticket || (ticket.createdById !== userId && ticket.assignedToId !== userId)) {
+        throw new Error('Permissão negada: você não pode remover este ticket');
+      }
+    }
+
     return prisma.ticket.delete({
       where: { id },
     });
