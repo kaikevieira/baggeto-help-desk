@@ -18,6 +18,7 @@ const createSchema = z.object({
     destinationCity: z.string().optional(),
     destinationUF: z.string().length(2).optional(),
     destinationIBGEId: z.number().optional(),
+    route: z.string().optional(), // Rota por estados (ex: "SP > PR > SC")
     freightBasis: z.enum(['FULL', 'TON']).optional(),
     incoterm: z.enum(['CIF', 'FOB']).optional(),
     paymentTerm: z.string().optional(),
@@ -52,6 +53,7 @@ const updateSchema = z.object({
     destinationCity: z.string().optional(),
     destinationUF: z.string().length(2).optional(),
     destinationIBGEId: z.number().optional().nullable(),
+    route: z.string().optional(), // Rota por estados (ex: "SP > PR > SC")
     freightBasis: z.enum(['FULL', 'TON']).optional(),
     incoterm: z.enum(['CIF', 'FOB']).optional(),
     paymentTerm: z.string().optional(),
