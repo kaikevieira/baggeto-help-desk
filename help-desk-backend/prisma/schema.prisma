@@ -80,6 +80,9 @@ model Ticket {
   destinationCity   String?
   destinationUF     String?       @db.VarChar(2)
   destinationIBGEId Int?
+  
+  // Rota por estados (ex: "SP > PR > SC")
+  route             String?
 
   freightBasis      FreightBasis  @default(FULL)
   incoterm          Incoterm      @default(CIF)
