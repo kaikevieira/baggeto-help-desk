@@ -2,8 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createTicket } from "../api/tickets";
 import AppLayout from "../components/AppLayout";
-import BrazilSVGRouteMap from "../components/BrasilSVGRouteMap.jsx";
-import { StateRouteSelectorFallback } from "../components/StateRouteSelectorFallback.jsx";
+import RouteSelector from "../components/RouteSelector";
 import Button from "../components/Button";
 import CityUFInput from "../components/CityUFInput";
 import UserSelect from "../components/UserSelect";
@@ -131,12 +130,7 @@ export default function TicketNew() {
 
             {/* Seletor de Rota por Estados */}
             <div>
-               <div className="space-y-3">
-                <BrazilSVGRouteMap value={route} onChange={setRoute} />
-                <div className="md:hidden">
-                  <StateRouteSelectorFallback value={route} onChange={setRoute} />
-                </div>
-              </div>
+              <RouteSelector value={route} onChange={setRoute} />
             </div>
 
             <div className="grid gap-6 sm:grid-cols-2">
