@@ -2,8 +2,10 @@ import AppLayout from "../components/AppLayout";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useNavigate } from "react-router-dom";
 import Button from "../components/Button";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 export default function Settings() {
+  usePageTitle('Configurações');
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
