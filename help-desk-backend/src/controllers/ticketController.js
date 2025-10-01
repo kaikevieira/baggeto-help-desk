@@ -100,8 +100,19 @@ export const ticketController = {
       const pageSize = Number(req.query.pageSize ?? 10);
       const status = req.query.status;
       const q = req.query.q;
+      
+      // Pegar informações do usuário logado do middleware de auth
+      const userId = req.user.sub;
+      const userRole = req.user.role;
 
-      const [count, items] = await ticketService.list({ page, pageSize, status, q });
+      const [count, items] = await ticketService.list({ 
+        page, 
+        pageSize, 
+        status, 
+        q, 
+        userId, 
+        userRole 
+      });
       res.json({
         page, pageSize, count,
         pages: Math.ceil(count / pageSize),
@@ -118,8 +129,18 @@ export const ticketController = {
       if (isNaN(id)) {
         return res.status(400).json({ message: 'ID inválido' });
       }
-      const ticket = await ticketService.get(id);
-      if (!ticket) return res.status(404).json({ message: 'Ticket não encontrado' });
+      
+      const userId = req.user.sub;
+      const userRole = req.user.role;
+      
+      const ticket = await ticketService.get(id, userId, userRole);
+      if (!ticket) {
+        return res.status(404).json({ 
+          message: userRole !== 'ADMIN' 
+            ? 'Ticket não encontrado ou você não tem permissão para visualizá-lo' 
+            : 'Ticket não encontrado' 
+        });
+      }
       res.json(ticket);
     } catch (e) {
       next(e);
@@ -132,13 +153,21 @@ export const ticketController = {
       if (isNaN(id)) {
         return res.status(400).json({ message: 'ID inválido' });
       }
+      
+      const userId = req.user.sub;
+      const userRole = req.user.role;
+      
       const updateData = { ...req.body };
       if (req.body.assignedToId) {
         updateData.assignedToId = parseInt(req.body.assignedToId);
       }
-      const updated = await ticketService.update(id, updateData);
+      
+      const updated = await ticketService.update(id, updateData, userId, userRole);
       res.json(updated);
     } catch (e) {
+      if (e.message.includes('Permissão negada')) {
+        return res.status(403).json({ message: e.message });
+      }
       next(e);
     }
   },
@@ -149,9 +178,16 @@ export const ticketController = {
       if (isNaN(id)) {
         return res.status(400).json({ message: 'ID inválido' });
       }
-      await ticketService.remove(id);
+      
+      const userId = req.user.sub;
+      const userRole = req.user.role;
+      
+      await ticketService.remove(id, userId, userRole);
       res.json({ message: 'Removido' });
     } catch (e) {
+      if (e.message.includes('Permissão negada')) {
+        return res.status(403).json({ message: e.message });
+      }
       next(e);
     }
   },
