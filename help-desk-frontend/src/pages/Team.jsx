@@ -4,6 +4,7 @@ import { listUsers, createUser, updateUser } from "../api/users";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useNavigate } from "react-router-dom";
 import Button from "../components/Button";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 const RoleBadge = ({ role }) => {
   const color =
@@ -153,6 +154,7 @@ function UserModal({ open, onClose, onSave, initial }) {
 }
 
 export default function Team() {
+  usePageTitle('Equipe');
   const navigate = useNavigate();
   const { user } = useAuth();
 
