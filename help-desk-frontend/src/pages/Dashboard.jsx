@@ -6,11 +6,14 @@ import { summary as apiSummary } from "../api/dashboard";
 import { listTickets } from "../api/tickets";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useNavigate } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 const statusMap = { OPEN: "aberto", IN_PROGRESS: "andamento", RESOLVED: "resolvido", CLOSED: "resolvido" };
 const priorityMap = { LOW: "baixa", MEDIUM: "media", HIGH: "alta", URGENT: "critica" };
 
 export default function Dashboard() {
+  usePageTitle('Dashboard');
+
   const navigate = useNavigate();
   const { logout } = useAuth();
   const [stats, setStats] = useState({ total: 0, byStatus: { OPEN: 0, IN_PROGRESS: 0, RESOLVED: 0, CLOSED: 0 } });
@@ -46,6 +49,7 @@ export default function Dashboard() {
   }, []); // eslint-disable-line
 
   return (
+
     <AppLayout onNavigate={(to) => navigate(to)} onLogout={logout}>
       <section className="mb-6">
         <h1 className="text-2xl font-semibold text-titulo">Dashboard</h1>
