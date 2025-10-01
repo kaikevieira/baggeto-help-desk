@@ -11,3 +11,7 @@ export function logout() {
 export function refresh() {
   return apiFetch("/auth/refresh", { method: "POST" });
 }
+
+export function me() {
+  return apiFetch("/auth/me");
+}
