@@ -4,6 +4,7 @@ import TicketsTable from "../components/TicketsTable";
 import Button from "../components/Button";
 import { listTickets } from "../api/tickets";
 import { useNavigate } from "react-router-dom";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 const statusFilterToApi = {
   Todos: undefined,
@@ -14,6 +15,7 @@ const statusFilterToApi = {
 const statusLabels = Object.keys(statusFilterToApi);
 
 export default function Tickets() {
+  usePageTitle('Tickets');
   const navigate = useNavigate();
   const [q, setQ] = useState("");
   const [tab, setTab] = useState("Todos");
