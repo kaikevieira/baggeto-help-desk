@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { login as apiLogin, logout as apiLogout, refresh as apiRefresh } from "../api/auth";
+import React, { createContext, useContext, useEffect, useMemo, useState, useRef } from "react";
+import { login as apiLogin, logout as apiLogout, refresh as apiRefresh, me as apiMe } from "../api/auth";
 
 const AuthCtx = createContext(null);
 
@@ -8,15 +8,65 @@ export function AuthProvider({ children }) {
     try { return JSON.parse(localStorage.getItem("auth_user") || "null"); } catch { return null; }
   });
   const [initializing, setInitializing] = useState(true);
+  const refreshTimerRef = useRef(null);
+
+  // Função para configurar refresh preventivo
+  const setupRefreshTimer = () => {
+    // Limpa timer anterior se existir
+    if (refreshTimerRef.current) {
+      clearInterval(refreshTimerRef.current);
+    }
+
+    // Refresh a cada 14 minutos (1 minuto antes de expirar)
+    refreshTimerRef.current = setInterval(async () => {
+      if (user) {
+        try {
+          await apiRefresh();
+          console.log('Token refreshed preventively');
+        } catch (error) {
+          console.error('Preventive refresh failed:', error);
+          // Se refresh preventivo falhar, faz logout
+          setUser(null);
+          localStorage.removeItem("auth_user");
+        }
+      }
+    }, 14 * 60 * 1000); // 14 minutos
+  };
+
+  // Limpa timer quando componente desmonta
+  useEffect(() => {
+    return () => {
+      if (refreshTimerRef.current) {
+        clearInterval(refreshTimerRef.current);
+      }
+    };
+  }, []);
+
+  // Setup inicial e refresh timer quando user muda
+  useEffect(() => {
+    if (user) {
+      setupRefreshTimer();
+    } else if (refreshTimerRef.current) {
+      clearInterval(refreshTimerRef.current);
+      refreshTimerRef.current = null;
+    }
+  }, [user]);
 
   useEffect(() => {
     (async () => {
       try {
         if (!user) {
+          // Tenta fazer refresh para verificar se ainda tem sessão válida
           await apiRefresh();
+          // Se refresh foi bem-sucedido, busca dados do usuário
+          const { user: userData } = await apiMe();
+          setUser(userData);
+          localStorage.setItem("auth_user", JSON.stringify(userData));
         }
       } catch (_) {
-        // ignorar
+        // Se refresh ou /me falhou, usuário não está autenticado
+        localStorage.removeItem("auth_user");
+        setUser(null);
       } finally {
         setInitializing(false);
       }
@@ -36,6 +86,10 @@ export function AuthProvider({ children }) {
       try { await apiLogout(); } catch {}
       setUser(null);
       localStorage.removeItem("auth_user");
+      if (refreshTimerRef.current) {
+        clearInterval(refreshTimerRef.current);
+        refreshTimerRef.current = null;
+      }
     }
   }), [user, initializing]);
 
