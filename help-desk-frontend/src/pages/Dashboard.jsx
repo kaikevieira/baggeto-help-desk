@@ -28,12 +28,18 @@ export default function Dashboard() {
         const list = await listTickets({ page: 1, pageSize: 8 });
         const items = (list.items || []).map((t) => ({
           id: t.id,
+          ticketNumber: t.ticketNumber,
           title: t.title,
-          client: t.createdBy?.username || "-",
+          assignedTo: t.assignedTo?.username || '-',
           priority: priorityMap[t.priority] || "media",
           status: statusMap[t.status] || "aberto",
-          sla: "-",
-          updatedAt: new Date(t.updatedAt).toLocaleString(),
+          updatedAt: new Date(t.updatedAt).toLocaleString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit', 
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          }),
         }));
         setRows(items);
       } catch (e) {
