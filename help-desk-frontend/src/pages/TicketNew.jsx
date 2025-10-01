@@ -1,11 +1,13 @@
 import { useState } from "react";
-import AppLayout from "../components/AppLayout";
-import Button from "../components/Button";
-import { createTicket } from "../api/tickets";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext.jsx";
+import { createTicket } from "../api/tickets";
+import AppLayout from "../components/AppLayout";
+import BrazilSVGRouteMap from "../components/BrasilSVGRouteMap.jsx";
+import { StateRouteSelectorFallback } from "../components/StateRouteSelectorFallback.jsx";
+import Button from "../components/Button";
 import CityUFInput from "../components/CityUFInput";
 import UserSelect from "../components/UserSelect";
+import { useAuth } from "../context/AuthContext.jsx";
 import { usePageTitle } from "../hooks/usePageTitle";
 
 export default function TicketNew() {
@@ -16,6 +18,7 @@ export default function TicketNew() {
   const [origin, setOrigin] = useState({ city: "", uf: "SC", ibgeId: undefined });
   const [destination, setDestination] = useState({ city: "", uf: "SC", ibgeId: undefined });
   const [assignedUser, setAssignedUser] = useState({ id: null, username: "", role: "" });
+  const [route, setRoute] = useState(""); // Rota por estados (ex: "SP > PR > SC")
 
   const [form, setForm] = useState({
     title: "",
@@ -62,6 +65,9 @@ export default function TicketNew() {
         destinationCity: destination.city || undefined,
         destinationUF: destination.uf || undefined,
         destinationIBGEId: destination.ibgeId || undefined,
+        
+        // Rota por estados
+        route: route || undefined,
 
         freightBasis: form.freightBasis,
         incoterm: form.incoterm,
@@ -121,6 +127,16 @@ export default function TicketNew() {
             <div className="grid gap-6 sm:grid-cols-2">
               <CityUFInput label="Origem (Cidade/UF)" value={origin} onChange={setOrigin} defaultUF="SC" />
               <CityUFInput label="Destino (Cidade/UF)" value={destination} onChange={setDestination} defaultUF="SC" />
+            </div>
+
+            {/* Seletor de Rota por Estados */}
+            <div>
+               <div className="space-y-3">
+                <BrazilSVGRouteMap value={route} onChange={setRoute} />
+                <div className="md:hidden">
+                  <StateRouteSelectorFallback value={route} onChange={setRoute} />
+                </div>
+              </div>
             </div>
 
             <div className="grid gap-6 sm:grid-cols-2">
