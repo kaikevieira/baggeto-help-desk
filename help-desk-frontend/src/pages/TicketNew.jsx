@@ -6,8 +6,10 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import CityUFInput from "../components/CityUFInput";
 import UserSelect from "../components/UserSelect";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 export default function TicketNew() {
+  usePageTitle('Novo Ticket');
   const navigate = useNavigate();
   const { user } = useAuth();
 
