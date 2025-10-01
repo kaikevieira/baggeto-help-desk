@@ -76,5 +76,21 @@ export const authController = {
     } catch (e) {
       next(e);
     }
+  },
+
+  me: async (req, res, next) => {
+    try {
+      // req.user já está disponível através do middleware requireAuth
+      const { sub, username, role } = req.user;
+      res.json({ 
+        user: { 
+          id: sub, 
+          username, 
+          role 
+        } 
+      });
+    } catch (e) {
+      next(e);
+    }
   }
 };
