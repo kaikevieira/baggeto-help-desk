@@ -53,24 +53,65 @@ export function AuthProvider({ children }) {
   }, [user]);
 
   useEffect(() => {
+    let timeoutId;
+    
     (async () => {
       try {
-        if (!user) {
-          // Tenta fazer refresh para verificar se ainda tem sessão válida
-          await apiRefresh();
-          // Se refresh foi bem-sucedido, busca dados do usuário
-          const { user: userData } = await apiMe();
-          setUser(userData);
-          localStorage.setItem("auth_user", JSON.stringify(userData));
+        // Timeout de segurança: se não resolver em 10 segundos, para a inicialização
+        timeoutId = setTimeout(() => {
+          console.warn('Auth initialization timeout');
+          setInitializing(false);
+        }, 10000);
+
+        // Se já tem usuário no localStorage, verifica se é válido
+        if (user) {
+          try {
+            // Tenta fazer uma requisição para verificar se token ainda é válido
+            await apiMe();
+            // Se chegou aqui, token é válido, não precisa fazer nada
+          } catch (error) {
+            // Token inválido, tenta refresh
+            try {
+              await apiRefresh();
+              const { user: userData } = await apiMe();
+              setUser(userData);
+              localStorage.setItem("auth_user", JSON.stringify(userData));
+            } catch (refreshError) {
+              // Refresh falhou, remove dados inválidos
+              localStorage.removeItem("auth_user");
+              setUser(null);
+            }
+          }
+        } else {
+          // Não tem usuário, tenta verificar se há sessão válida
+          try {
+            await apiRefresh();
+            const { user: userData } = await apiMe();
+            setUser(userData);
+            localStorage.setItem("auth_user", JSON.stringify(userData));
+          } catch (_) {
+            // Sem sessão válida, garante que localStorage está limpo
+            localStorage.removeItem("auth_user");
+            setUser(null);
+          }
         }
-      } catch (_) {
-        // Se refresh ou /me falhou, usuário não está autenticado
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        // Em caso de erro não esperado, limpa estado
         localStorage.removeItem("auth_user");
         setUser(null);
       } finally {
+        clearTimeout(timeoutId);
         setInitializing(false);
       }
     })();
+
+    // Cleanup function
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
   }, []); // eslint-disable-line
 
   const value = useMemo(() => ({
