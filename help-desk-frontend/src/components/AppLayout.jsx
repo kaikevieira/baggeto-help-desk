@@ -2,10 +2,22 @@ import Sidebar from "./SideBar";
 
 export default function AppLayout({ onNavigate, onLogout, children }) {
   return (
-    <div className="min-h-screen bg-fundo text-texto">
-      <div className="mx-auto grid  grid-cols-1 md:grid-cols-[18rem_1fr]">
+    <div className="min-h-screen bg-fundo text-texto overflow-x-hidden max-w-full">
+      {/* Sidebar fixa para desktop */}
+      <div className="fixed left-0 top-0 z-40 w-72 h-full hidden md:block overflow-y-auto">
         <Sidebar onNavigate={onNavigate} onLogout={onLogout} />
-        <main className="min-h-screen p-4 sm:p-6">{children}</main>
+      </div>
+      
+      {/* Main content com margem para sidebar */}
+      <main className="md:ml-72 min-h-screen p-4 sm:p-6 max-w-full overflow-x-hidden">
+        {children}
+      </main>
+      
+      {/* Sidebar mobile overlay */}
+      <div className="md:hidden fixed inset-0 z-50 bg-black/50" id="mobile-sidebar">
+        <div className="w-72 h-full bg-fundo">
+          <Sidebar onNavigate={onNavigate} onLogout={onLogout} />
+        </div>
       </div>
     </div>
   );
