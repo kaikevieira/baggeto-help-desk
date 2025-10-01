@@ -168,6 +168,21 @@ export default function TicketDetails() {
                       </div>
                     </div>
                   </div>
+                  
+                  {/* ROTA POR ESTADOS */}
+                  {ticket.route && (
+                    <div className="mt-4">
+                      <label className="mb-2 block text-sm font-medium text-texto/80">Rota por Estados</label>
+                      <div className="rounded-xl border border-azul-claro/30 bg-azul-claro/10 px-3 sm:px-4 py-3">
+                        <div className="text-azul-claro font-mono text-lg font-semibold text-center">
+                          {ticket.route}
+                        </div>
+                        <div className="text-xs text-azul-claro/70 text-center mt-1">
+                          Roteiro de estados por onde a carga irá passar
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* CONFIGURAÇÕES DE FRETE */}
