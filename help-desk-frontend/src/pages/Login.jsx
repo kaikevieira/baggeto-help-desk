@@ -1,13 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import AuthBackground from "../components/AuthBackground";
 import AuthCard from "../components/AuthCard";
 import Button from "../components/Button";
 import InputField from "../components/InputField";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 
 export default function Login() {
+    usePageTitle('Login');
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
@@ -17,8 +19,28 @@ export default function Login() {
 
     const navigate = useNavigate();
     const location = useLocation();
-    const { login } = useAuth();
+    const { login, user, initializing } = useAuth();
     const from = location.state?.from || "/dashboard";
+
+    // Redireciona se usuário já está autenticado
+    useEffect(() => {
+        if (!initializing && user) {
+            navigate(from, { replace: true });
+        }
+    }, [user, initializing, navigate, from]);
+
+    // Mostra loading enquanto AuthContext está inicializando
+    if (initializing) {
+        return (
+            <AuthBackground>
+                <AuthCard title="Carregando..." subtitle="Verificando autenticação">
+                    <div className="flex justify-center items-center p-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-azul-claro"></div>
+                    </div>
+                </AuthCard>
+            </AuthBackground>
+        );
+    }
 
     async function handleSubmit(e) {
         e.preventDefault();
