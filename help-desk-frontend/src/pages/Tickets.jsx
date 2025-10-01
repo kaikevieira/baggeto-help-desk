@@ -58,12 +58,18 @@ export default function Tickets() {
     };
     return (data.items || []).map((t) => ({
       id: t.id,
+      ticketNumber: t.ticketNumber,
       title: t.title,
-      client: t.createdBy?.username || "-",
+      assignedTo: t.assignedTo?.username || '-',
       priority: priorityMap[t.priority] || "media",
       status: statusMap[t.status] || "aberto",
-      sla: "-",
-      updatedAt: new Date(t.updatedAt).toLocaleString(),
+      updatedAt: new Date(t.updatedAt).toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit', 
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }),
     }));
   }, [data]);
 
@@ -84,7 +90,7 @@ export default function Tickets() {
             setPage(1);
             setQ(e.target.value);
           }}
-          placeholder="Buscar por título ou descrição..."
+          placeholder="Buscar por número, título, descrição ou empresa..."
           className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto placeholder:text-texto/50 focus:outline-none focus:ring-2 focus:ring-azul-claro/30"
         />
         <div className="flex items-center gap-2">
