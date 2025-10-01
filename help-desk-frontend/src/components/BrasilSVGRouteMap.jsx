@@ -10,10 +10,18 @@ import brazilSVGRaw from "../assets/brazil.svg?raw"; // coloque o brazil.svg em 
  *  - onChange: (newRouteStr) => void
  *  - height: altura máxima opcional do container (default 540)
  */
-export default function BrazilSVGRouteMap({ value = "", onChange, height = "auto" }) {
+export default function BrazilSVGRouteMap({
+  value = "",
+  onChange,
+  // altura preferida do mapa dentro do container
+  height = "clamp(320px, 60vh, 560px)",
+  // largura máxima (para não ficar exagerado em telas muito largas)
+  maxWidth = "900px",
+}) {
   const wrapperRef = useRef(null);
   const svgHostRef = useRef(null); // div que recebe o SVG (inline)
   const [centers, setCenters] = useState({}); // { UF: {x,y} }
+  const [viewBox, setViewBox] = useState("0 0 1000 600");
 
   const selected = useMemo(() =>
     value ? value.split(" > ").filter(Boolean) : [],
@@ -34,14 +42,14 @@ export default function BrazilSVGRouteMap({ value = "", onChange, height = "auto
     const svg = svgHostRef.current.querySelector("svg");
     if (!svg) return;
 
-    // Responsividade aprimorada
-    svg.removeAttribute("width");
-    svg.removeAttribute("height");
-    svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
-    svg.setAttribute("viewBox", svg.getAttribute("viewBox") || "0 0 1000 600");
-    svg.style.width = "100%";
-    svg.style.height = "auto";
-    svg.style.maxHeight = "100%";
+  // Responsividade: ocupa 100% do container mantendo o viewBox
+  svg.removeAttribute("width");
+  svg.removeAttribute("height");
+  svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+  svg.setAttribute("viewBox", svg.getAttribute("viewBox") || viewBox);
+  svg.style.width = "100%";
+  svg.style.height = "100%";
+  svg.style.maxWidth = "100%";
 
     // Ativa pointer-events e cursores
     svg.querySelectorAll("path[id^='BR-']").forEach((p) => {
@@ -53,6 +61,23 @@ export default function BrazilSVGRouteMap({ value = "", onChange, height = "auto
       p.addEventListener("mouseenter", () => p.classList.add("mapsvg-hover"));
       p.addEventListener("mouseleave", () => p.classList.remove("mapsvg-hover"));
     });
+
+    // Calcula auto-fit do viewBox com base na união das UFs para remover margens extras
+    const allPaths = svg.querySelectorAll("path[id^='BR-']");
+    if (allPaths.length) {
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      allPaths.forEach((p) => {
+        const bb = p.getBBox();
+        minX = Math.min(minX, bb.x);
+        minY = Math.min(minY, bb.y);
+        maxX = Math.max(maxX, bb.x + bb.width);
+        maxY = Math.max(maxY, bb.y + bb.height);
+      });
+      const pad = 10; // pequeno padding para não encostar nas bordas
+      const vb = `${minX - pad} ${minY - pad} ${maxX - minX + 2 * pad} ${maxY - minY + 2 * pad}`;
+      svg.setAttribute("viewBox", vb);
+      setViewBox(vb);
+    }
 
     // Calcula centros (bbox) para desenhar rota
     const nextCenters = {};
@@ -129,15 +154,15 @@ export default function BrazilSVGRouteMap({ value = "", onChange, height = "auto
 
   return (
     <div ref={wrapperRef} className="w-full h-full flex items-center justify-center">
-      {/* Container do mapa responsivo sem fundo */}
-      <div className="relative w-full h-full max-w-4xl">
-        <div className="w-full" style={{ aspectRatio: "5/3" }}>
+      {/* Container do mapa com controle de tamanho */}
+      <div className="relative w-full mx-auto" style={{ height, maxWidth }}>
+        <div className="relative w-full h-full">
           <div ref={svgHostRef} className="w-full h-full select-none" />
           {/* Overlay via SVG separado para polyline e marcadores */}
           <svg 
             className="pointer-events-none absolute inset-0 w-full h-full" 
             preserveAspectRatio="xMidYMid meet"
-            viewBox="0 0 1000 600"
+            viewBox={viewBox}
           >
             {/* polyline conectando centros */}
             {selected.length >= 2 && (

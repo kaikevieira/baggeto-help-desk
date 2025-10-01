@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import BrazilSVGRouteMap from './BrasilSVGRouteMap';
 
 export default function RouteSelector({ value = "", onChange }) {
@@ -19,6 +19,29 @@ export default function RouteSelector({ value = "", onChange }) {
     onChange(tempRoute);
     setIsModalOpen(false);
   };
+
+  // Bloqueia scroll da página quando a modal está aberta + ESC para fechar
+  useEffect(() => {
+    if (isModalOpen) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+
+      const onEsc = (e) => {
+        if (e.key === 'Escape') closeModal();
+      };
+      document.addEventListener('keydown', onEsc);
+
+      return () => {
+        document.body.style.overflow = prev || '';
+        document.removeEventListener('keydown', onEsc);
+      };
+    }
+
+    // restaura ao fechar
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isModalOpen]);
 
   const clearRoute = () => {
     setTempRoute("");
@@ -80,7 +103,7 @@ export default function RouteSelector({ value = "", onChange }) {
           />
           
           {/* Modal Content - Responsivo */}
-          <div className="relative bg-fundo border border-borda rounded-2xl shadow-2xl w-full max-w-6xl h-full max-h-[90vh] flex flex-col">
+          <div className="relative bg-fundo border border-borda rounded-2xl shadow-2xl w-full h-full max-w-2xl max-h-[95vh] flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between p-4 sm:p-6 border-b border-borda">
               <div>
@@ -119,13 +142,15 @@ export default function RouteSelector({ value = "", onChange }) {
               </div>
             </div>
 
-            {/* Mapa - ocupa todo espaço disponível e responsivo */}
-            <div className="flex-1 p-2 sm:p-4 overflow-hidden">
-              <div className="w-full h-full min-h-[300px]">
-                <BrazilSVGRouteMap 
-                  value={tempRoute} 
-                  onChange={setTempRoute}
-                />
+            {/* Mapa - ocupa espaço disponível sem ser cortado */}
+            <div className="flex-1 min-h-[320px] max-h-[60vh] p-3 sm:p-4">
+              <div className="w-full h-full flex items-center justify-center">
+                  <BrazilSVGRouteMap 
+                    value={tempRoute} 
+                    onChange={setTempRoute}
+                    height="clamp(320px, 58vh, 540px)"
+                    maxWidth="980px"
+                  />
               </div>
             </div>
 

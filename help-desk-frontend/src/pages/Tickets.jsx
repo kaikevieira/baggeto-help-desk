@@ -80,7 +80,7 @@ export default function Tickets() {
           <h1 className="text-2xl font-semibold text-titulo">Chamados</h1>
           <p className="text-texto/70">Lista de chamados com filtros e paginação</p>
         </div>
-        <Button onClick={() => navigate("/tickets/new")}>Novo chamado</Button>
+        <Button onClick={() => navigate("/tickets/new")} className="">Novo chamado</Button>
       </section>
 
       <section className="mb-4 grid gap-3 sm:grid-cols-[1fr_auto]">
