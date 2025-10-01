@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+/* Prevent horizontal scroll globally */
+html, body {
+    overflow-x: hidden;
+    max-width: 100vw;
+}
+
+* {
+    box-sizing: border-box;
+}
+
 @theme {
     --color-fundo: #181818;
     --color-titulo: #ffffff;
