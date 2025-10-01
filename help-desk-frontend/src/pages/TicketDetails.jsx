@@ -5,12 +5,17 @@ import AppLayout from "../components/AppLayout";
 import Button from "../components/Button";
 import StatusPill from "../components/StatusPill";
 import { useAuth } from "../context/AuthContext.jsx";
+import { usePageTitle } from "../hooks/usePageTitle";
 
 export default function TicketDetails() {
   const navigate = useNavigate();
   const { id } = useParams();
   const { user } = useAuth();
   const [ticket, setTicket] = useState(null);
+  
+  // Título dinâmico baseado no ticket
+  usePageTitle(ticket ? `Ticket #${ticket.id} - ${ticket.title}` : `Ticket #${id}`);
+  
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
