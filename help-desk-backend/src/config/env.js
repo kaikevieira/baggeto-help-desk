@@ -1,8 +1,7 @@
 import 'dotenv/config';
 
 export const ENV = {
-  // Em produção, use 8000 por padrão (Koyeb), a menos que PORT seja explicitamente definido
-  PORT: process.env.PORT || (process.env.NODE_ENV === 'production' ? 8000 : 4000),
+  PORT: process.env.PORT,
   NODE_ENV: process.env.NODE_ENV || 'development',
   CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:5173',
   COOKIE_SECURE: process.env.COOKIE_SECURE === 'true',
