@@ -3,11 +3,31 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { useNavigate } from "react-router-dom";
 import Button from "../components/Button";
 import { usePageTitle } from "../hooks/usePageTitle";
+import { PageHeaderSkeleton, Skeleton } from "../components/Skeletons";
 
 export default function Settings() {
   usePageTitle('Configurações');
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, initializing } = useAuth();
+
+  if (initializing) {
+    return (
+      <AppLayout current="/settings" onNavigate={(to) => navigate(to)} onLogout={logout}>
+        <PageHeaderSkeleton />
+        <div className="grid max-w-xl gap-4">
+          <div className="rounded-2xl border border-borda p-4">
+            <Skeleton className="h-5 w-40 mb-3" />
+            <Skeleton className="h-4 w-64 mb-2" />
+            <Skeleton className="h-4 w-52" />
+          </div>
+          <div className="flex gap-2">
+            <Skeleton className="h-10 w-28" />
+            <Skeleton className="h-10 w-32" />
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout
