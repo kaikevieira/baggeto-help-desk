@@ -15,6 +15,8 @@ app.use(cookieParser());
 
 // Healthcheck
 app.get('/health', (_req, res) => res.json({ ok: true }));
+// Root route (some platforms ping '/')
+app.get('/', (_req, res) => res.status(200).send('OK'));
 
 // Rotas
 app.use('/auth', authRoutes);
