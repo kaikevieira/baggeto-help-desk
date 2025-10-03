@@ -27,12 +27,15 @@ export const authController = {
 
       // cookies httpOnly
       const isProd = ENV.NODE_ENV === 'production';
+      // Domínio do cookie só deve ser definido se pertencer ao próprio host da API
+      const cookieDomain = ENV.COOKIE_DOMAIN;
+      const domain = cookieDomain && req.hostname.endsWith(cookieDomain) ? cookieDomain : undefined;
       const baseCookie = {
         httpOnly: true,
         secure: isProd || ENV.COOKIE_SECURE, // exige HTTPS quando em produção
         sameSite: isProd ? 'none' : 'lax',   // para permitir cross-site em prod
         path: '/',
-        domain: ENV.COOKIE_DOMAIN || undefined,
+        domain,
       };
       res
         .cookie('access_token', accessToken, { ...baseCookie, maxAge: 1000 * 60 * 15 })
@@ -51,12 +54,14 @@ export const authController = {
       const { accessToken } = await authService.refresh(refreshToken);
 
       const isProd = ENV.NODE_ENV === 'production';
+      const cookieDomain = ENV.COOKIE_DOMAIN;
+      const domain = cookieDomain && req.hostname.endsWith(cookieDomain) ? cookieDomain : undefined;
       const baseCookie = {
         httpOnly: true,
         secure: isProd || ENV.COOKIE_SECURE,
         sameSite: isProd ? 'none' : 'lax',
         path: '/',
-        domain: ENV.COOKIE_DOMAIN || undefined,
+        domain,
       };
       res.cookie('access_token', accessToken, { ...baseCookie, maxAge: 1000 * 60 * 15 }).json({ ok: true });
     } catch (e) {
@@ -70,12 +75,14 @@ export const authController = {
       await authService.logout(refreshToken);
 
       const isProd = ENV.NODE_ENV === 'production';
+      const cookieDomain = ENV.COOKIE_DOMAIN;
+      const domain = cookieDomain && req.hostname.endsWith(cookieDomain) ? cookieDomain : undefined;
       const clearOpts = {
         httpOnly: true,
         secure: isProd || ENV.COOKIE_SECURE,
         sameSite: isProd ? 'none' : 'lax',
         path: '/',
-        domain: ENV.COOKIE_DOMAIN || undefined,
+        domain,
       };
       res.clearCookie('access_token', clearOpts);
       res.clearCookie('refresh_token', clearOpts);
