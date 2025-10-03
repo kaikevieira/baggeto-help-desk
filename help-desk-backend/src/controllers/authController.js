@@ -26,19 +26,17 @@ export const authController = {
       const { accessToken, refreshToken, user } = await authService.login(req.body);
 
       // cookies httpOnly
+      const isProd = ENV.NODE_ENV === 'production';
+      const baseCookie = {
+        httpOnly: true,
+        secure: isProd || ENV.COOKIE_SECURE, // exige HTTPS quando em produção
+        sameSite: isProd ? 'none' : 'lax',   // para permitir cross-site em prod
+        path: '/',
+        domain: ENV.COOKIE_DOMAIN || undefined,
+      };
       res
-        .cookie('access_token', accessToken, {
-          httpOnly: true,
-          secure: ENV.COOKIE_SECURE,
-          sameSite: 'lax',
-          maxAge: 1000 * 60 * 15
-        })
-        .cookie('refresh_token', refreshToken, {
-          httpOnly: true,
-          secure: ENV.COOKIE_SECURE,
-          sameSite: 'lax',
-          maxAge: 1000 * 60 * 60 * 24 * 7
-        })
+        .cookie('access_token', accessToken, { ...baseCookie, maxAge: 1000 * 60 * 15 })
+        .cookie('refresh_token', refreshToken, { ...baseCookie, maxAge: 1000 * 60 * 60 * 24 * 7 })
         .json({ user });
     } catch (e) {
       next(e);
@@ -52,14 +50,15 @@ export const authController = {
 
       const { accessToken } = await authService.refresh(refreshToken);
 
-      res
-        .cookie('access_token', accessToken, {
-          httpOnly: true,
-          secure: ENV.COOKIE_SECURE,
-          sameSite: 'lax',
-          maxAge: 1000 * 60 * 15
-        })
-        .json({ ok: true });
+      const isProd = ENV.NODE_ENV === 'production';
+      const baseCookie = {
+        httpOnly: true,
+        secure: isProd || ENV.COOKIE_SECURE,
+        sameSite: isProd ? 'none' : 'lax',
+        path: '/',
+        domain: ENV.COOKIE_DOMAIN || undefined,
+      };
+      res.cookie('access_token', accessToken, { ...baseCookie, maxAge: 1000 * 60 * 15 }).json({ ok: true });
     } catch (e) {
       next(e);
     }
@@ -70,8 +69,16 @@ export const authController = {
       const refreshToken = req.cookies?.refresh_token;
       await authService.logout(refreshToken);
 
-      res.clearCookie('access_token');
-      res.clearCookie('refresh_token');
+      const isProd = ENV.NODE_ENV === 'production';
+      const clearOpts = {
+        httpOnly: true,
+        secure: isProd || ENV.COOKIE_SECURE,
+        sameSite: isProd ? 'none' : 'lax',
+        path: '/',
+        domain: ENV.COOKIE_DOMAIN || undefined,
+      };
+      res.clearCookie('access_token', clearOpts);
+      res.clearCookie('refresh_token', clearOpts);
       res.json({ ok: true });
     } catch (e) {
       next(e);

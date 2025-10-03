@@ -9,6 +9,9 @@ import dashboardRoutes from './routes/dashboard.routes.js';
 
 const app = express();
 
+// Respeita X-Forwarded-* (necessário atrás de proxy/reverse proxy)
+app.set('trust proxy', 1);
+
 app.use(corsMiddleware);
 app.use(express.json());
 app.use(cookieParser());
