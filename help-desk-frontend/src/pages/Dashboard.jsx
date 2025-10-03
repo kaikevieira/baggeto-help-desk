@@ -7,7 +7,7 @@ import { listTickets } from "../api/tickets";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useNavigate } from "react-router-dom";
 import { usePageTitle } from "../hooks/usePageTitle";
-import { PageHeaderSkeleton, SkeletonStatGrid, SkeletonTable } from "../components/Skeletons";
+import { PageHeaderSkeleton, SkeletonStatGrid, SkeletonTable, Skeleton } from "../components/Skeletons";
 
 const statusMap = { OPEN: "aberto", IN_PROGRESS: "andamento", RESOLVED: "resolvido", CLOSED: "resolvido" };
 const priorityMap = { LOW: "baixa", MEDIUM: "media", HIGH: "alta", URGENT: "critica" };
