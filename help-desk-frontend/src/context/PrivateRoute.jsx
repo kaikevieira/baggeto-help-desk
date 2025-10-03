@@ -1,13 +1,14 @@
 import React from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "./AuthContext";
+import { FullPageSkeleton } from "../components/Skeletons";
 
 export default function PrivateRoute() {
   const { user, initializing } = useAuth();
   const loc = useLocation();
 
   if (initializing) {
-    return <div className="p-6 text-texto">Inicializando...</div>;
+    return <FullPageSkeleton />;
   }
   if (!user) {
     return <Navigate to="/login" replace state={{ from: loc.pathname }} />;
