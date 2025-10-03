@@ -6,6 +6,7 @@ import Button from "../components/Button";
 import StatusPill from "../components/StatusPill";
 import { useAuth } from "../context/AuthContext.jsx";
 import { usePageTitle } from "../hooks/usePageTitle";
+import { FullPageSkeleton } from "../components/Skeletons";
 
 export default function TicketDetails() {
   const navigate = useNavigate();
@@ -84,7 +85,7 @@ export default function TicketDetails() {
   return (
     <AppLayout current="/tickets" onNavigate={(to) => navigate(to)}>
       {loading ? (
-        <div className="rounded-2xl border border-borda p-6 text-texto/70">Carregando...</div>
+        <FullPageSkeleton />
       ) : !ticket ? (
         <div className="rounded-2xl border border-borda p-6 text-red-300">Ticket não encontrado</div>
       ) : (
