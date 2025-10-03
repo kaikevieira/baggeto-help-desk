@@ -28,10 +28,8 @@ COPY --from=build /help-desk-backend/prisma ./prisma
 COPY --from=build /help-desk-backend/src ./src
 COPY package*.json ./
 
-# Exponha a porta que você usa localmente (apenas informativo)
-# Se seu servidor usa 4000 por padrão, mantenha 4000;
-# (Na Koyeb, seu app deve ler process.env.PORT)
-EXPOSE 4000
+# Expose informativo; na Koyeb a porta padrão do serviço é 8000
+EXPOSE 8000
 
 # Aplica migrações e inicia o servidor
 CMD ["sh", "-c", "npx prisma migrate deploy && node src/server.js"]
