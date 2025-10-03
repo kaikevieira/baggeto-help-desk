@@ -5,6 +5,7 @@ import Button from "../components/Button";
 import { listTickets } from "../api/tickets";
 import { useNavigate } from "react-router-dom";
 import { usePageTitle } from "../hooks/usePageTitle";
+import { PageHeaderSkeleton, SkeletonTable } from "../components/Skeletons";
 
 const statusFilterToApi = {
   Todos: undefined,
@@ -114,9 +115,10 @@ export default function Tickets() {
       </section>
 
       {loading ? (
-        <div className="rounded-2xl border border-borda p-6 text-texto/70">
-          Carregando...
-        </div>
+        <>
+          <PageHeaderSkeleton />
+          <SkeletonTable rows={8} />
+        </>
       ) : (
         <TicketsTable
           tickets={rows}
