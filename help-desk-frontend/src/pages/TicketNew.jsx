@@ -8,11 +8,12 @@ import CityUFInput from "../components/CityUFInput";
 import UserSelect from "../components/UserSelect";
 import { useAuth } from "../context/AuthContext.jsx";
 import { usePageTitle } from "../hooks/usePageTitle";
+import { PageHeaderSkeleton, Skeleton } from "../components/Skeletons";
 
 export default function TicketNew() {
   usePageTitle('Novo Ticket');
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, initializing } = useAuth();
 
   const [origin, setOrigin] = useState({ city: "", uf: "SC", ibgeId: undefined });
   const [destination, setDestination] = useState({ city: "", uf: "SC", ibgeId: undefined });
@@ -100,6 +101,30 @@ export default function TicketNew() {
     }
   }
 
+  if (initializing) {
+    return (
+      <AppLayout onNavigate={(to) => navigate(to)}>
+        <PageHeaderSkeleton />
+        <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
+          <div className="rounded-2xl border border-borda p-5">
+            <Skeleton className="h-5 w-40 mb-4" />
+            <div className="grid gap-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-borda p-5">
+            <Skeleton className="h-5 w-40 mb-4" />
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full mb-3" />
+            ))}
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout onNavigate={(to) => navigate(to)}>
       <section className="mb-6">
@@ -107,7 +132,15 @@ export default function TicketNew() {
         <p className="text-texto/70">Abra um chamado de transporte</p>
       </section>
 
-      <form onSubmit={handleSubmit} className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
+      <form onSubmit={handleSubmit} className="grid gap-6 lg:grid-cols-[1.6fr_1fr] relative">
+        {loading && (
+          <div className="absolute inset-0 z-10 rounded-2xl bg-black/40 backdrop-blur-sm grid place-items-center">
+            <div className="flex items-center gap-3 text-texto">
+              <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-azul-claro" />
+              Salvando...
+            </div>
+          </div>
+        )}
         {/* ESQUERDA — TRANSPORTE */}
         <section className="rounded-2xl border border-borda p-5">
           <h2 className="mb-4 text-lg font-medium text-titulo">Transporte</h2>
