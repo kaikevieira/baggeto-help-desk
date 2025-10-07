@@ -8,6 +8,7 @@ const createSchema = z.object({
   body: z.object({
     title: z.string().min(3),
     description: z.string().min(3),
+    status: z.enum(['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED']).optional(),
     priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
     assignedToId: z.number().optional(),
 
@@ -158,8 +159,11 @@ export const ticketController = {
       const userRole = req.user.role;
       
       const updateData = { ...req.body };
-      if (req.body.assignedToId) {
-        updateData.assignedToId = parseInt(req.body.assignedToId);
+      // Tratar assignedToId explicitamente para permitir desatribuir (null)
+      if (Object.prototype.hasOwnProperty.call(req.body, 'assignedToId')) {
+        updateData.assignedToId = req.body.assignedToId === null
+          ? null
+          : parseInt(req.body.assignedToId);
       }
       
       const updated = await ticketService.update(id, updateData, userId, userRole);
