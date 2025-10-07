@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { createTicket } from "../api/tickets";
 import AppLayout from "../components/AppLayout";
@@ -46,6 +46,39 @@ export default function TicketNew() {
     cteRepresentative: "",
     manifestRepresentative: "",
   });
+
+  // Máscara monetária (BRL) para pagamento a terceiro
+  const [thirdPartyPaymentDisplay, setThirdPartyPaymentDisplay] = useState("");
+
+  useEffect(() => {
+    const val = form.thirdPartyPayment;
+    if (val === "" || val == null) {
+      setThirdPartyPaymentDisplay("");
+      return;
+    }
+    const num = typeof val === "number" ? val : Number(val);
+    if (!isNaN(num)) {
+      setThirdPartyPaymentDisplay(
+        num.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+      );
+    }
+  }, [form.thirdPartyPayment]);
+
+  function onChangeThirdPartyPayment(e) {
+    const input = e.target.value || "";
+    // Mantém apenas dígitos (centavos como duas casas)
+    const digits = input.replace(/\D/g, "");
+    if (!digits) {
+      setThirdPartyPaymentDisplay("");
+      setForm((f) => ({ ...f, thirdPartyPayment: "" }));
+      return;
+    }
+    const number = parseInt(digits, 10) / 100;
+    setThirdPartyPaymentDisplay(
+      number.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+    );
+    setForm((f) => ({ ...f, thirdPartyPayment: number }));
+  }
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -283,12 +316,12 @@ export default function TicketNew() {
                   <div>
                     <label className="mb-1 block text-sm text-texto/80">Valor de pagamento p/ terceiro</label>
                     <input
-                      type="number"
-                      step="0.01"
-                      min="0"
+                      type="text"
+                      inputMode="numeric"
                       className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
-                      value={form.thirdPartyPayment}
-                      onChange={setv("thirdPartyPayment")}
+                      placeholder="R$ 0,00"
+                      value={thirdPartyPaymentDisplay}
+                      onChange={onChangeThirdPartyPayment}
                     />
                   </div>
                   
