@@ -8,6 +8,7 @@ export const ticketService = {
     
     return prisma.ticket.create({
       data: {
+        status: data.status || 'OPEN',
         ...data,
         ticketNumber,
       },
@@ -96,23 +97,24 @@ export const ticketService = {
 
     // Verificar permissões para usuários não-admin
     if (userRole !== 'ADMIN') {
+      // Pode visualizar se for criador ou atribuído
       if (ticket.createdById !== userId && ticket.assignedToId !== userId) {
-        return null; // Não tem permissão, simula que não encontrou
+        return null; // não pode ver
       }
+      // Editar é controlado no update(); aqui apenas retornamos os dados
     }
 
     return ticket;
   },
 
   update: async (id, data, userId, userRole) => {
-    // Primeiro verificar se o usuário tem permissão para editar este ticket
+    // Permissões: ADMIN pode editar qualquer; USER pode editar apenas os tickets que ele criou
     if (userRole !== 'ADMIN') {
       const ticket = await prisma.ticket.findUnique({
         where: { id },
-        select: { createdById: true, assignedToId: true }
+        select: { createdById: true }
       });
-      
-      if (!ticket || (ticket.createdById !== userId && ticket.assignedToId !== userId)) {
+      if (!ticket || ticket.createdById !== userId) {
         throw new Error('Permissão negada: você não pode editar este ticket');
       }
     }
@@ -128,14 +130,13 @@ export const ticketService = {
   },
 
   remove: async (id, userId, userRole) => {
-    // Primeiro verificar se o usuário tem permissão para remover este ticket
+    // Permissões: ADMIN pode remover; USER apenas se for criador
     if (userRole !== 'ADMIN') {
       const ticket = await prisma.ticket.findUnique({
         where: { id },
-        select: { createdById: true, assignedToId: true }
+        select: { createdById: true }
       });
-      
-      if (!ticket || (ticket.createdById !== userId && ticket.assignedToId !== userId)) {
+      if (!ticket || ticket.createdById !== userId) {
         throw new Error('Permissão negada: você não pode remover este ticket');
       }
     }
