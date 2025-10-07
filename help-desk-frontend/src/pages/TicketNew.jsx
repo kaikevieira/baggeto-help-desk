@@ -164,7 +164,12 @@ export default function TicketNew() {
 
             {/* Seletor de Rota por Estados */}
             <div>
-              <RouteSelector value={route} onChange={setRoute} />
+              <RouteSelector 
+                value={route} 
+                onChange={setRoute}
+                startUF={origin?.uf}
+                endUF={destination?.uf}
+              />
             </div>
 
             <div className="grid gap-6 sm:grid-cols-2">
