@@ -407,7 +407,7 @@ export default function TicketNew() {
               />
             </div>
 
-            {user?.role === "ADMIN" && (
+            {user && (
               <UserSelect
                 label="Atribuir para"
                 value={assignedUser}
