@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ticketService } from '../services/ticketService.js';
+import { notificationService } from '../services/notificationService.js';
 
 // =======================
 // VALIDADORES (Zod)
@@ -89,6 +90,8 @@ export const ticketController = {
         assignedToId: req.body.assignedToId ? parseInt(req.body.assignedToId) : undefined,
       };
       const ticket = await ticketService.create(data);
+      // Notificar criação (ator = criador)
+      try { await notificationService.notifyTicketCreated(ticket.id, parseInt(req.user.sub)); } catch {}
       res.status(201).json(ticket);
     } catch (e) {
       next(e);
@@ -167,6 +170,8 @@ export const ticketController = {
       }
       
       const updated = await ticketService.update(id, updateData, userId, userRole);
+      // Notificar atualização
+      try { await notificationService.notifyTicketUpdated(id, parseInt(req.user.sub)); } catch {}
       res.json(updated);
     } catch (e) {
       if (e.message.includes('Permissão negada')) {
@@ -204,6 +209,8 @@ export const ticketController = {
         return res.status(400).json({ message: 'ID inválido' });
       }
       const comment = await ticketService.comment(ticketId, userId, req.body.body);
+      // Notificar novo comentário
+      try { await notificationService.notifyCommentAdded(ticketId, userId); } catch {}
       res.json(comment);
     } catch (e) {
       next(e);
