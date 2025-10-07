@@ -1,16 +1,27 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
+// Util simples para normalizar acentos e facilitar busca
+function normalize(str = "") {
+  return str
+    .normalize("NFD")
+    .replace(/\p{Diacritic}+/gu, "")
+    .toLowerCase();
+}
+
 export default function CityUFInput({
   label = "Cidade/UF",
   value,        // { city, uf, ibgeId } | undefined
   onChange,     // (next) => void
-  placeholder = "Digite a cidade e selecione a UF",
+  placeholder = "Digite a cidade (ex.: orleans, orleans/sc)",
+  // defaultUF mantido por compatibilidade, mas não é mais usado no modo inteligente
   defaultUF = "SC",
 }) {
-  const [ufs, setUfs] = useState([]);
-  const [uf, setUf] = useState(value?.uf || defaultUF);
-  const [cities, setCities] = useState([]);
-  const [q, setQ] = useState(value?.city || "");
+  const [allCities, setAllCities] = useState([]); // [{ id, nome, uf }]
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [q, setQ] = useState(
+    value?.city && value?.uf ? `${value.city}/${value.uf}` : ""
+  );
   const [open, setOpen] = useState(false);
   const boxRef = useRef(null);
 
@@ -23,90 +34,110 @@ export default function CityUFInput({
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
-  // carrega UFs (uma vez)
+  // Sincroniza exibição quando value muda externamente
   useEffect(() => {
-    fetch("https://servicodados.ibge.gov.br/api/v1/localidades/estados")
-      .then((r) => r.json())
-      .then((list) => {
-        const sorted = list
-          .map((s) => ({ sigla: s.sigla, nome: s.nome }))
-          .sort((a, b) => a.sigla.localeCompare(b.sigla));
-        setUfs(sorted);
-        if (!value?.uf && defaultUF && sorted.some((u) => u.sigla === defaultUF)) {
-          setUf(defaultUF);
+    if (value?.city && value?.uf) {
+      setQ(`${value.city}/${value.uf}`);
+    }
+  }, [value?.city, value?.uf]);
+
+  // Carrega todos os municípios do IBGE (uma única vez)
+  useEffect(() => {
+    let cancelled = false;
+    async function loadAll() {
+      setLoading(true);
+      setError("");
+      try {
+        const res = await fetch(
+          "https://servicodados.ibge.gov.br/api/v1/localidades/municipios?orderBy=nome"
+        );
+        const list = await res.json();
+        if (cancelled) return;
+        // Extrai UF sigla de microrregiao.mesorregiao.UF.sigla
+        const mapped = (Array.isArray(list) ? list : []).map((m) => ({
+          id: m?.id,
+          nome: m?.nome,
+          uf: m?.microrregiao?.mesorregiao?.UF?.sigla || "",
+        }));
+        // Filtra registros válidos e remove duplicatas por id
+        const uniqueById = new Map();
+        for (const c of mapped) {
+          if (c.id && c.nome && c.uf) uniqueById.set(c.id, c);
         }
-      })
-      .catch(() => {});
-  }, []); // :contentReference[oaicite:2]{index=2}
+        setAllCities(Array.from(uniqueById.values()));
+      } catch (e) {
+        if (!cancelled) setError("Falha ao carregar cidades do IBGE");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    loadAll();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  // carrega cidades da UF
-  useEffect(() => {
-    if (!uf) return;
-    fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`)
-      .then((r) => r.json())
-      .then((list) => {
-        setCities(list.map((m) => ({ id: m.id, nome: m.nome })));
-      })
-      .catch(() => {});
-  }, [uf]); // :contentReference[oaicite:3]{index=3}
-
-  // sugestões por nome
+  // sugestões por nome (busca em cidade e cidade/UF)
   const suggestions = useMemo(() => {
-    const term = q.trim().toLowerCase();
-    if (!term) return cities;
-    return cities.filter((c) => c.nome.toLowerCase().includes(term)).slice(0, 50);
-  }, [q, cities]);
+    const term = normalize(q.trim());
+    if (!term) return allCities.slice(0, 50);
+    return allCities
+      .filter((c) => {
+        const combo = normalize(`${c.nome}/${c.uf}`);
+        // Também permite busca por espaço (ex.: "orleans sc")
+        const comboSpace = normalize(`${c.nome} ${c.uf}`);
+        return (
+          combo.includes(term) ||
+          comboSpace.includes(term) ||
+          normalize(c.nome).includes(term)
+        );
+      })
+      .slice(0, 50);
+  }, [q, allCities]);
 
   const selectCity = (cityObj) => {
-    setQ(cityObj.nome);
+    setQ(`${cityObj.nome}/${cityObj.uf}`);
     setOpen(false);
-    onChange?.({ city: cityObj.nome, uf, ibgeId: cityObj.id });
+    onChange?.({ city: cityObj.nome, uf: cityObj.uf, ibgeId: cityObj.id });
   };
 
   return (
     <div ref={boxRef} className="grid gap-1">
       <label className="mb-1 block text-sm text-texto/80">{label}</label>
-      <div className="grid grid-cols-[1fr_5rem] gap-2">
-        <div className="relative">
-          <input
-            value={q}
-            onChange={(e) => { setQ(e.target.value); setOpen(true); }}
-            onFocus={() => setOpen(true)}
-            placeholder={placeholder}
-            className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto placeholder:text-texto/50 focus:outline-none focus:ring-2 focus:ring-azul-claro/30"
-          />
-          {open && suggestions.length > 0 && (
-            <div className="absolute z-20 mt-1 w-full max-h-60 overflow-y-auto rounded-xl border border-borda bg-[#101010] shadow-lg custom-scrollbar">
-              {suggestions.map((s) => (
-                <button
-                  type="button"
-                  key={s.id}
-                  onClick={() => selectCity(s)}
-                  className="block w-full px-3 py-2 text-left text-sm hover:bg-white/5 hover:text-titulo transition-colors"
-                >
-                  {s.nome}/{uf}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <select
-          value={uf || ""}
-          onChange={(e) => { setUf(e.target.value); setOpen(true); }}
-          className="custom-select rounded-xl border border-borda bg-[#101010] px-3 py-2 text-texto focus:outline-none focus:ring-2 focus:ring-azul-claro/30 appearance-none cursor-pointer hover:border-azul-claro/50 transition-colors"
-          style={{
-            backgroundImage: `url("data:image/svg+xml;charset=UTF-8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c1c1c1' stroke-width='2'><polyline points='6,9 12,15 18,9'></polyline></svg>")`,
-            backgroundRepeat: 'no-repeat',
-            backgroundPosition: 'right 8px center',
-            backgroundSize: '16px'
+      <div className="relative">
+        <input
+          value={q}
+          onChange={(e) => {
+            setQ(e.target.value);
+            setOpen(true);
           }}
-        >
-          <option value="" disabled>UF</option>
-          {ufs.map((u) => (
-            <option key={u.sigla} value={u.sigla}>{u.sigla}</option>
-          ))}
-        </select>
+          onFocus={() => setOpen(true)}
+          placeholder={placeholder}
+          className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto placeholder:text-texto/50 focus:outline-none focus:ring-2 focus:ring-azul-claro/30"
+        />
+        {open && (
+          <div className="absolute z-20 mt-1 w-full max-h-60 overflow-y-auto rounded-xl border border-borda bg-[#101010] shadow-lg custom-scrollbar">
+            {loading && (
+              <div className="px-3 py-2 text-sm text-texto/70">Carregando cidades...</div>
+            )}
+            {!loading && error && (
+              <div className="px-3 py-2 text-sm text-red-400">{error}</div>
+            )}
+            {!loading && !error && suggestions.length === 0 && (
+              <div className="px-3 py-2 text-sm text-texto/60">Nenhuma cidade encontrada</div>
+            )}
+            {!loading && !error && suggestions.map((s) => (
+              <button
+                type="button"
+                key={s.id}
+                onClick={() => selectCity(s)}
+                className="block w-full px-3 py-2 text-left text-sm hover:bg-white/5 hover:text-titulo transition-colors"
+              >
+                {s.nome}/{s.uf}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* preview do valor composto */}

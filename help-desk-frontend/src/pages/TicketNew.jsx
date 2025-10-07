@@ -236,7 +236,6 @@ export default function TicketNew() {
                   value={form.cargoWeight}
                   onChange={setv("cargoWeight")}
                 />
-                <p className="mt-1 text-xs text-texto/60">Use o mesmo padrão do banco (ex.: toneladas).</p>
               </div>
               <div>
                 <CompanySelect
