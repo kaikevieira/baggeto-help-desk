@@ -17,6 +17,9 @@ html, body {
     --color-azul-claro: #0084b5;
     --color-azul-escuro: #005b7f;
     --color-borda: #303030;
+    --color-verde: #22c55e;
+    --color-vermelho: #ef4444;
+    --color-amarelo: #eab308;
 }
 
 .custom-scrollbar::-webkit-scrollbar {

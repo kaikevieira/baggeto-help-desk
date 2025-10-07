@@ -74,10 +74,10 @@ export default function Dashboard() {
           </section>
 
           <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard title="Chamados Totais" value={stats.total} trend={0} />
-            <StatCard title="Abertos" value={stats.byStatus.OPEN || 0} trend={0} />
-            <StatCard title="Em Andamento" value={stats.byStatus.IN_PROGRESS || 0} trend={0} />
-            <StatCard title="Resolvidos" value={(stats.byStatus.RESOLVED || 0) + (stats.byStatus.CLOSED || 0)} trend={0} />
+            <StatCard title="Chamados Totais" value={stats.total || 0} accent="var(--color-azul-claro)" />
+            <StatCard title="Abertos" value={stats.byStatus.OPEN || 0} accent="var(--color-vermelho)" />
+            <StatCard title="Em Andamento" value={stats.byStatus.IN_PROGRESS || 0} accent="var(--color-amarelo)" />
+            <StatCard title="Resolvidos" value={(stats.byStatus.RESOLVED || 0) + (stats.byStatus.CLOSED || 0)} accent="var(--color-verde)" />
           </section>
 
           <section className="mt-8">

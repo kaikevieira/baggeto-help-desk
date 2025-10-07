@@ -29,23 +29,17 @@ export const dashboardService = {
       }
     };
 
-    const [total, open, inProg, resolved, closed, last7] = await Promise.all([
+    const [total, open, inProg, resolved, closed] = await Promise.all([
       prisma.ticket.count({ where: baseWhere }),
       prisma.ticket.count({ where: combineWhere('OPEN') }),
       prisma.ticket.count({ where: combineWhere('IN_PROGRESS') }),
       prisma.ticket.count({ where: combineWhere('RESOLVED') }),
-      prisma.ticket.count({ where: combineWhere('CLOSED') }),
-      prisma.ticket.groupBy({
-        by: ['status'],
-        _count: { _all: true },
-        where: baseWhere
-      })
+      prisma.ticket.count({ where: combineWhere('CLOSED') })
     ]);
 
     return {
       total,
-      byStatus: { OPEN: open, IN_PROGRESS: inProg, RESOLVED: resolved, CLOSED: closed },
-      distribution: last7.map((i) => ({ status: i.status, count: i._count._all }))
+      byStatus: { OPEN: open, IN_PROGRESS: inProg, RESOLVED: resolved, CLOSED: closed }
     };
   }
 };
