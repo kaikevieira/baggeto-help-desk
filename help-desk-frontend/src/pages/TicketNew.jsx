@@ -5,6 +5,7 @@ import AppLayout from "../components/AppLayout";
 import RouteSelector from "../components/RouteSelector";
 import Button from "../components/Button";
 import CityUFInput from "../components/CityUFInput";
+import CompanySelect from "../components/CompanySelect";
 import UserSelect from "../components/UserSelect";
 import { useAuth } from "../context/AuthContext.jsx";
 import { usePageTitle } from "../hooks/usePageTitle";
@@ -231,11 +232,11 @@ export default function TicketNew() {
                 <p className="mt-1 text-xs text-texto/60">Use o mesmo padrão do banco (ex.: toneladas).</p>
               </div>
               <div>
-                <label className="mb-1 block text-sm text-texto/80">Empresa de faturamento</label>
-                <input
-                  className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
+                <CompanySelect
+                  label="Empresa de faturamento"
                   value={form.billingCompany}
-                  onChange={setv("billingCompany")}
+                  onChange={(val) => setForm((f) => ({ ...f, billingCompany: val }))}
+                  placeholder="Selecione a empresa"
                 />
               </div>
             </div>
