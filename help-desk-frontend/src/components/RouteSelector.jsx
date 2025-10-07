@@ -1,11 +1,31 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import BrazilSVGRouteMap from './BrasilSVGRouteMap';
+import { shortestPath } from '../data/ufGraph';
 
-export default function RouteSelector({ value = "", onChange }) {
+export default function RouteSelector({ value = "", onChange, startUF, endUF }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [tempRoute, setTempRoute] = useState(value);
 
+  // Rota sugerida automaticamente usando o menor caminho entre startUF e endUF
+  const suggested = useMemo(() => {
+    if (!startUF || !endUF || startUF === endUF) return "";
+    const path = shortestPath(startUF, endUF);
+    if (!path || path.length === 0) return "";
+    // A rota que o usuário edita contém apenas os estados intermediários
+    // Ex.: SC -> SP => path [SC, PR, SP], rota intermediária: "PR"
+    if (path.length <= 2) return ""; // estados vizinhos: rota vazia
+    const mids = path.slice(1, -1);
+    return mids.join(' > ');
+  }, [startUF, endUF]);
+
+  const suggestedPath = useMemo(() => {
+    if (!startUF || !endUF) return [];
+    const path = shortestPath(startUF, endUF) || [];
+    return path;
+  }, [startUF, endUF]);
+
   const openModal = () => {
+    // Não preencher automaticamente: mantenha o valor atual ou vazio
     setTempRoute(value);
     setIsModalOpen(true);
   };
@@ -124,20 +144,44 @@ export default function RouteSelector({ value = "", onChange }) {
 
             {/* Rota atual no topo da modal */}
             <div className="px-4 sm:px-6 py-3 sm:py-4 bg-azul-claro/10 border-b border-borda">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="grid gap-4 sm:grid-cols-2">
+                {/* Rota selecionada */}
                 <div>
                   <span className="text-sm text-titulo font-medium">Rota selecionada:</span>
                   <div className="text-azul-claro font-mono text-base sm:text-lg mt-1 break-all">
                     {tempRoute || "Nenhuma rota selecionada"}
                   </div>
+                  {tempRoute && (
+                    <button
+                      onClick={clearRoute}
+                      className="mt-2 px-3 py-1 text-sm text-red-400 hover:text-red-300 border border-red-400/30 rounded-lg transition-colors"
+                    >
+                      Limpar
+                    </button>
+                  )}
                 </div>
-                {tempRoute && (
-                  <button
-                    onClick={clearRoute}
-                    className="px-3 py-1 text-sm text-red-400 hover:text-red-300 border border-red-400/30 rounded-lg transition-colors self-start sm:self-auto"
-                  >
-                    Limpar
-                  </button>
+
+                {/* Rota sugerida */}
+                {!!(startUF && endUF) && (
+                  <div>
+                    <span className="text-sm text-titulo font-medium">Rota sugerida (menor caminho):</span>
+                    <div className="mt-1 space-y-1">
+                      <div className="text-texto/70 text-sm">
+                        Caminho: <span className="font-mono text-texto">{suggestedPath.length ? suggestedPath.join(' > ') : '—'}</span>
+                      </div>
+                      <div className="text-texto/70 text-sm">
+                        Intermediários: <span className="font-mono text-texto">{suggested || '—'}</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={!suggested || tempRoute === suggested}
+                      onClick={() => setTempRoute(suggested)}
+                      className="mt-2 px-3 py-1 text-sm rounded-lg border border-borda text-texto hover:bg-slate-600/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Usar sugerida
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -148,6 +192,8 @@ export default function RouteSelector({ value = "", onChange }) {
                   <BrazilSVGRouteMap 
                     value={tempRoute} 
                     onChange={setTempRoute}
+                    startUF={startUF}
+                    endUF={endUF}
                     height="clamp(320px, 58vh, 540px)"
                     maxWidth="980px"
                   />
