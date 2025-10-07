@@ -13,6 +13,9 @@ import brazilSVGRaw from "../assets/brazil.svg?raw"; // coloque o brazil.svg em 
 export default function BrazilSVGRouteMap({
   value = "",
   onChange,
+  // UF de origem/destino (fixas e destacadas em vermelho)
+  startUF,
+  endUF,
   // altura preferida do mapa dentro do container
   height = "clamp(320px, 60vh, 560px)",
   // largura máxima (para não ficar exagerado em telas muito largas)
@@ -95,6 +98,8 @@ export default function BrazilSVGRouteMap({
     if (!svg) return;
 
     const handleClick = (uf) => {
+      // Ignora cliques nos endpoints
+      if (uf === startUF || uf === endUF) return;
       // Lê o estado atual diretamente do value
       const currentSelected = value ? value.split(" > ").filter(Boolean) : [];
       const i = currentSelected.indexOf(uf);
@@ -122,7 +127,7 @@ export default function BrazilSVGRouteMap({
         }
       });
     };
-  }, [value, onChange]);
+  }, [value, onChange, startUF, endUF]);
 
   // --- aplica estilos de seleção sempre que a rota mudar ---
   useEffect(() => {
@@ -137,8 +142,14 @@ export default function BrazilSVGRouteMap({
       } else {
         p.classList.add("mapsvg-selected");
       }
+
+      // marca os endpoints
+      if (startUF && uf === startUF) p.classList.add("mapsvg-endpoint-start");
+      else p.classList.remove("mapsvg-endpoint-start");
+      if (endUF && uf === endUF) p.classList.add("mapsvg-endpoint-end");
+      else p.classList.remove("mapsvg-endpoint-end");
     });
-  }, [selected]);
+  }, [selected, startUF, endUF]);
 
   // Pontos na ordem da rota para desenhar o polyline
   const linePoints = useMemo(() => {
@@ -188,6 +199,20 @@ export default function BrazilSVGRouteMap({
                 </g>
               );
             })}
+
+            {/* marcadores de origem/destino */}
+            {startUF && centers[startUF] && (
+              <g key={`start-${startUF}`}>
+                <circle cx={centers[startUF].x} cy={centers[startUF].y} r={13} className="fill-red-500" />
+                <text x={centers[startUF].x} y={centers[startUF].y + 4} textAnchor="middle" className="fill-white text-[10px] font-bold">O</text>
+              </g>
+            )}
+            {endUF && centers[endUF] && (
+              <g key={`end-${endUF}`}>
+                <circle cx={centers[endUF].x} cy={centers[endUF].y} r={13} className="fill-red-500" />
+                <text x={centers[endUF].x} y={centers[endUF].y + 4} textAnchor="middle" className="fill-white text-[10px] font-bold">D</text>
+              </g>
+            )}
           </svg>
         </div>
       </div>
@@ -207,6 +232,14 @@ export default function BrazilSVGRouteMap({
           fill: rgba(14,165,233,0.65); 
           stroke: rgba(14,165,233,0.8);
           stroke-width: 1.5;
+        }
+
+        /* origem/destino em vermelho (sobrepõe seleção) */
+        path.mapsvg-endpoint-start,
+        path.mapsvg-endpoint-end {
+          fill: rgba(239, 68, 68, 0.65) !important;
+          stroke: rgba(239, 68, 68, 0.85) !important;
+          stroke-width: 1.8;
         }
         
         /* Responsividade aprimorada */
