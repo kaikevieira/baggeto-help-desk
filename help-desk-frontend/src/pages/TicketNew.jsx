@@ -25,6 +25,7 @@ export default function TicketNew() {
     title: "",
     description: "",
     // Operacional
+    status: "OPEN",
     priority: "MEDIUM",
     // Transporte
     freightBasis: "FULL",
@@ -59,6 +60,7 @@ export default function TicketNew() {
         title: form.title,
         description: form.description,
         priority: form.priority,
+  status: form.status || 'OPEN',
 
         originCity: origin.city || undefined,
         originUF: origin.uf || undefined,
@@ -367,6 +369,19 @@ export default function TicketNew() {
           <h2 className="mb-4 text-lg font-medium text-titulo">Operacional</h2>
 
           <div className="grid gap-4">
+            <div>
+              <label className="mb-1 block text-sm text-texto/80">Status</label>
+              <select
+                className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
+                value={form.status}
+                onChange={setv("status")}
+              >
+                <option value="OPEN">Aberto</option>
+                <option value="IN_PROGRESS">Em Andamento</option>
+                <option value="RESOLVED">Resolvido</option>
+                <option value="CLOSED">Fechado</option>
+              </select>
+            </div>
             <div>
               <label className="mb-1 block text-sm text-texto/80">Prioridade</label>
               <select

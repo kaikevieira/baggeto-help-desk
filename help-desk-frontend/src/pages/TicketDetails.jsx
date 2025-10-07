@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { addComment, getTicket, listComments, updateTicket } from "../api/tickets";
+import UserSelect from "../components/UserSelect";
 import AppLayout from "../components/AppLayout";
 import Button from "../components/Button";
 import StatusPill from "../components/StatusPill";
@@ -65,8 +66,14 @@ export default function TicketDetails() {
     setComments(cs);
   }
 
-  // Verifica se o usuário pode editar (proprietário ou admin)
-  const canEdit = user && ticket && (user.sub === ticket.createdById || user.role === "ADMIN");
+  // Regras:
+  // - ADMIN: pode editar qualquer
+  // - USER: pode editar apenas se for o criador; se for somente atribuído, é visualização
+  // Atenção: no frontend o usuário tem shape { id, username, role }
+  // então devemos comparar com user.id (não user.sub)
+  const isCreator = user && ticket && user.id === ticket.createdById;
+  const isAdmin = user && user.role === "ADMIN";
+  const canEdit = !!(isAdmin || isCreator);
   
   function toggleEdit() {
     if (canEdit) setIsEditing(!isEditing);
@@ -515,14 +522,20 @@ export default function TicketDetails() {
                   </select>
                 </div>
 
-                {ticket.assignedTo && (
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-texto/80">Atribuído para</label>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-texto/80">Atribuído para</label>
+                  {canEdit ? (
+                    <UserSelect
+                      value={ticket.assignedTo || { id: null, username: "", role: "" }}
+                      onChange={(u) => saveField("assignedToId", u?.id || null)}
+                      placeholder="Selecione um usuário"
+                    />
+                  ) : (
                     <div className="rounded-xl border border-borda bg-azul-claro/10 px-4 py-3 text-azul-claro font-medium">
-                      {ticket.assignedTo.username}
+                      {ticket.assignedTo?.username || "—"}
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
 
 
                 <div className="pt-4 border-t border-borda">
