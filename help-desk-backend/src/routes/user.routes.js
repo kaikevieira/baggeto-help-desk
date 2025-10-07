@@ -5,7 +5,8 @@ import { validate } from '../middlewares/validate.js';
 
 const router = Router();
 
-router.get('/',     requireAuth, requireRole('ADMIN'), validate(userSchemas.list),   userController.list);
+// Listar usuários: qualquer autenticado pode ver (necessário para atribuição)
+router.get('/',     requireAuth,                         validate(userSchemas.list),   userController.list);
 router.post('/',    requireAuth, requireRole('ADMIN'), validate(userSchemas.create), userController.create);
 router.put('/:id',  requireAuth, requireRole('ADMIN'), validate(userSchemas.update), userController.update);
 
