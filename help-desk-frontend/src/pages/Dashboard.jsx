@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import AppLayout from "../components/AppLayout";
+import NotificationBell from "../components/NotificationBell";
 import StatCard from "../components/StatCard";
 import TicketsTable from "../components/TicketsTable";
 import { summary as apiSummary } from "../api/dashboard";
@@ -57,6 +58,12 @@ export default function Dashboard() {
 
   return (
     <AppLayout onNavigate={(to) => navigate(to)} onLogout={logout}>
+      {/* Sino sobreposto no canto superior direito da página */}
+      <div className="pointer-events-none fixed right-4 top-4 z-50">
+        <div className="pointer-events-auto">
+          <NotificationBell />
+        </div>
+      </div>
       {loading ? (
         <>
           <PageHeaderSkeleton />
