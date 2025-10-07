@@ -27,8 +27,8 @@ enum TicketPriority {
 }
 
 enum FreightBasis {
-  FULL     // Frete Cheio
-  TON      // Frete Tonelada
+  FULL // Frete Cheio
+  TON // Frete Tonelada
 }
 
 enum Incoterm {
@@ -48,69 +48,76 @@ enum TollType {
 }
 
 model User {
-  id           Int            @id @default(autoincrement())
-  username     String         @unique
+  id           Int      @id @default(autoincrement())
+  username     String   @unique
   passwordHash String
-  role         Role           @default(USER)
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  role         Role     @default(USER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  ticketsCreated Ticket[]     @relation("TicketsCreated")
-  ticketsAssigned Ticket[]    @relation("TicketsAssigned")
-  comments      Comment[]
-  refreshTokens RefreshToken[]
+  ticketsCreated  Ticket[]       @relation("TicketsCreated")
+  ticketsAssigned Ticket[]       @relation("TicketsAssigned")
+  comments        Comment[]
+  refreshTokens   RefreshToken[]
+
+  // Back-relations para notificações
+  notificationsActed     Notification[]
+  notificationRecipients NotificationRecipient[]
 }
 
 model Ticket {
-  id          Int            @id @default(autoincrement())
-  ticketNumber String        @unique
-  title       String
-  description String
-  status      TicketStatus   @default(OPEN)
-  priority    TicketPriority @default(MEDIUM)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  id           Int            @id @default(autoincrement())
+  ticketNumber String         @unique
+  title        String
+  description  String
+  status       TicketStatus   @default(OPEN)
+  priority     TicketPriority @default(MEDIUM)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
 
   // ================================
   // Novos campos para transporte
   // ================================
   originCity        String?
-  originUF          String?       @db.VarChar(2)
+  originUF          String? @db.VarChar(2)
   originIBGEId      Int?
   destinationCity   String?
-  destinationUF     String?       @db.VarChar(2)
+  destinationUF     String? @db.VarChar(2)
   destinationIBGEId Int?
-  
-  // Rota por estados (ex: "SP > PR > SC")
-  route             String?
 
-  freightBasis      FreightBasis  @default(FULL)
-  incoterm          Incoterm      @default(CIF)
+  // Rota por estados (ex: "SP > PR > SC")
+  route String?
+
+  freightBasis      FreightBasis @default(FULL)
+  incoterm          Incoterm     @default(CIF)
   paymentTerm       String?
   paymentType       String?
-  cargoWeight       Decimal?      @db.Decimal(10,3)
+  cargoWeight       Decimal?     @db.Decimal(10, 3)
   billingCompany    String?
   plateCavalo       String?
   plateCarreta1     String?
   plateCarreta2     String?
   plateCarreta3     String?
-  fleetType         FleetType     @default(FROTA)
-  thirdPartyPayment Decimal?      @db.Decimal(10,2)
+  fleetType         FleetType    @default(FROTA)
+  thirdPartyPayment Decimal?     @db.Decimal(10, 2)
   serviceTaker      String?
-  
+
   // Novos campos para terceiros
-  hasToll           TollType?     // Tipo de pedágio
-  cteRepresentative String?       // Representante do CTE
-  manifestRepresentative String?  // Representante do manifesto
+  hasToll                TollType? // Tipo de pedágio
+  cteRepresentative      String? // Representante do CTE
+  manifestRepresentative String? // Representante do manifesto
   // ================================
 
   createdById Int
-  createdBy   User           @relation("TicketsCreated", fields: [createdById], references: [id])
+  createdBy   User @relation("TicketsCreated", fields: [createdById], references: [id])
 
   assignedToId Int?
-  assignedTo   User?         @relation("TicketsAssigned", fields: [assignedToId], references: [id])
+  assignedTo   User? @relation("TicketsAssigned", fields: [assignedToId], references: [id])
 
-  comments    Comment[]
+  comments Comment[]
+
+  // Back-relation para notificações
+  notifications Notification[]
 }
 
 model Comment {
@@ -118,22 +125,51 @@ model Comment {
   body      String
   createdAt DateTime @default(now())
 
-  ticketId  Int
-  ticket    Ticket   @relation(fields: [ticketId], references: [id])
+  ticketId Int
+  ticket   Ticket @relation(fields: [ticketId], references: [id])
 
-  authorId  Int
-  author    User     @relation(fields: [authorId], references: [id])
+  authorId Int
+  author   User @relation(fields: [authorId], references: [id])
 }
 
 model RefreshToken {
-  id        Int      @id @default(autoincrement())
+  id        Int       @id @default(autoincrement())
   tokenHash String
   userId    Int
-  user      User     @relation(fields: [userId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
   expiresAt DateTime
   revokedAt DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+// ================================
+// Notificações do sistema
+// ================================
+model Notification {
+  id        Int      @id @default(autoincrement())
+  type      String // TICKET_CREATED | TICKET_UPDATED | COMMENT_ADDED
+  message   String
+  ticketId  Int
+  ticket    Ticket   @relation(fields: [ticketId], references: [id])
+  actorId   Int?
+  actor     User?    @relation(fields: [actorId], references: [id])
+  createdAt DateTime @default(now())
+
+  recipients NotificationRecipient[]
+}
+
+model NotificationRecipient {
+  id             Int          @id @default(autoincrement())
+  notificationId Int
+  notification   Notification @relation(fields: [notificationId], references: [id])
+  userId         Int
+  user           User         @relation(fields: [userId], references: [id])
+  readAt         DateTime?
+  dismissedAt    DateTime?
+
+  @@index([userId, readAt])
+  @@index([notificationId])
 }
