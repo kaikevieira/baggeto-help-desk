@@ -83,7 +83,7 @@ export default function NotificationBell() {
   }
 
   return (
-    <div className="relative" ref={bellRef}>
+    <div className="relative p-2" ref={bellRef}>
       <button
         className="relative rounded-full p-2 border border-borda hover:border-azul-claro/50 hover:bg-azul-claro/10 transition-colors"
         onClick={openAndLoad}
@@ -98,7 +98,7 @@ export default function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-96 max-w-[90vw] rounded-xl border border-borda bg-[#101010] shadow-xl z-50">
+        <div className="absolute m-2 right-0 mt-2 w-96 max-w-[90vw] rounded-xl border border-borda bg-[#101010] shadow-xl z-50">
           <div className="px-3 py-2 border-b border-borda flex items-center justify-between">
             <span className="text-sm font-medium text-titulo">Notificações</span>
             {loading && <span className="text-xs text-texto/60">carregando…</span>}
