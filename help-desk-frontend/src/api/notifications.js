@@ -8,12 +8,12 @@ export function unreadCount() {
   return apiFetch("/notifications/unread-count");
 }
 
-export function markRead(id) {
-  return apiFetch(`/notifications/${id}/read`, { method: "POST" });
+export function markRead(id, { idempotencyKey } = {}) {
+  return apiFetch(`/notifications/${id}/read`, { method: "POST", idempotencyKey });
 }
 
-export function dismiss(id) {
-  return apiFetch(`/notifications/${id}/dismiss`, { method: "POST" });
+export function dismiss(id, { idempotencyKey } = {}) {
+  return apiFetch(`/notifications/${id}/dismiss`, { method: "POST", idempotencyKey });
 }
 
 export function openNotificationsStream() {
