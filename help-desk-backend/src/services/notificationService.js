@@ -17,7 +17,7 @@ export const notificationService = {
     // Descobrir destinatários: criador, atribuído e todos admins (exclui ator)
     const ticket = await prisma.ticket.findUnique({
       where: { id: ticketId },
-      select: { createdById: true, assignedToId: true }
+      select: { createdById: true, assignedToId: true, assignees: { select: { userId: true } } }
     });
     if (!ticket) return null;
 
@@ -27,8 +27,9 @@ export const notificationService = {
     });
 
     const recipientIds = new Set();
-    if (ticket.createdById) recipientIds.add(ticket.createdById);
-    if (ticket.assignedToId) recipientIds.add(ticket.assignedToId);
+  if (ticket.createdById) recipientIds.add(ticket.createdById);
+  if (ticket.assignedToId) recipientIds.add(ticket.assignedToId);
+  for (const a of (ticket.assignees || [])) recipientIds.add(a.userId);
     for (const a of admins) recipientIds.add(a.id);
     if (actorId) recipientIds.delete(actorId);
 
