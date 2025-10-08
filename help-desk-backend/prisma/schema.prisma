@@ -63,6 +63,9 @@ model User {
   // Back-relations para notificações
   notificationsActed     Notification[]
   notificationRecipients NotificationRecipient[]
+
+  // Modelos de ticket salvos pelo usuário
+  ticketTemplates TicketTemplate[]
 }
 
 model Ticket {
@@ -172,4 +175,20 @@ model NotificationRecipient {
 
   @@index([userId, readAt])
   @@index([notificationId])
+}
+
+// ================================
+// Modelos/templantes de Ticket
+// ================================
+model TicketTemplate {
+  id        Int      @id @default(autoincrement())
+  name      String
+  data      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
 }
