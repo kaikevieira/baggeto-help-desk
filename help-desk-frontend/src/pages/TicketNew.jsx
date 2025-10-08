@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { createTicket } from "../api/tickets";
 import AppLayout from "../components/AppLayout";
@@ -10,6 +10,7 @@ import UserSelect from "../components/UserSelect";
 import { useAuth } from "../context/AuthContext.jsx";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { PageHeaderSkeleton, Skeleton } from "../components/Skeletons";
+import { listTemplates, createTemplate, updateTemplate, deleteTemplate } from "../api/templates";
 
 export default function TicketNew() {
   usePageTitle('Novo Ticket');
@@ -83,6 +84,131 @@ export default function TicketNew() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const setv = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  // ===============================
+  // Modelos (Templates) de Ticket
+  // ===============================
+  const [templates, setTemplates] = useState([]);
+  const [tplOpen, setTplOpen] = useState(false);
+  const [tplLoading, setTplLoading] = useState(false);
+  const [tplError, setTplError] = useState("");
+  const [activeTemplateId, setActiveTemplateId] = useState(null);
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalType, setModalType] = useState("create"); // 'create' | 'rename'
+  const [modalName, setModalName] = useState("");
+  const [editingTemplate, setEditingTemplate] = useState(null);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    loadTemplates();
+  }, []);
+
+  useEffect(() => {
+    function onDocClick(e) {
+      if (!dropdownRef.current) return;
+      if (tplOpen && !dropdownRef.current.contains(e.target)) {
+        setTplOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [tplOpen]);
+
+  async function loadTemplates() {
+    setTplLoading(true);
+    setTplError("");
+    try {
+      const list = await listTemplates();
+      setTemplates(Array.isArray(list) ? list : []);
+    } catch (e) {
+      setTplError("Erro ao carregar modelos");
+      console.error(e);
+    } finally {
+      setTplLoading(false);
+    }
+  }
+
+  function buildTemplateData() {
+    return {
+      form,
+      origin,
+      destination,
+      route,
+      assignedUser,
+    };
+  }
+
+  function applyTemplate(tpl) {
+    try {
+      const data = tpl?.data || tpl; // aceita objeto de dados diretamente
+      if (!data) return;
+      // Campos principais
+      if (data.form) setForm((prev) => ({ ...prev, ...data.form }));
+      if (data.origin) setOrigin(data.origin);
+      if (data.destination) setDestination(data.destination);
+      if (typeof data.route === 'string') setRoute(data.route);
+      if (data.assignedUser) setAssignedUser(data.assignedUser);
+      setActiveTemplateId(tpl.id ?? null);
+    } catch (e) {
+      console.error('Falha ao aplicar modelo', e);
+    }
+  }
+
+  function openCreateTemplateModal() {
+    setModalType('create');
+    setModalName('');
+    setEditingTemplate(null);
+    setModalOpen(true);
+  }
+
+  function openRenameTemplateModal(tpl) {
+    setModalType('rename');
+    setModalName(tpl?.name || '');
+    setEditingTemplate(tpl);
+    setModalOpen(true);
+  }
+
+  async function handleModalConfirm() {
+    try {
+      if (!modalName.trim()) return;
+      if (modalType === 'create') {
+        const created = await createTemplate({ name: modalName.trim(), data: buildTemplateData() });
+        setTemplates((arr) => [created, ...arr]);
+        setActiveTemplateId(created.id);
+      } else if (modalType === 'rename' && editingTemplate) {
+        const updated = await updateTemplate(editingTemplate.id, { name: modalName.trim(), data: editingTemplate.data });
+        setTemplates((arr) => arr.map((t) => t.id === editingTemplate.id ? updated : t));
+      }
+      setModalOpen(false);
+    } catch (e) {
+      console.error(e);
+      alert('Não foi possível salvar o modelo.');
+    }
+  }
+
+  async function handleUpdateWithCurrent(tpl) {
+    try {
+      const updated = await updateTemplate(tpl.id, { name: tpl.name, data: buildTemplateData() });
+      setTemplates((arr) => arr.map((t) => t.id === tpl.id ? updated : t));
+      setActiveTemplateId(tpl.id);
+    } catch (e) {
+      console.error(e);
+      alert('Falha ao atualizar o modelo.');
+    }
+  }
+
+  async function handleDeleteTemplate(tpl) {
+    if (!confirm(`Remover o modelo "${tpl.name}"?`)) return;
+    try {
+      await deleteTemplate(tpl.id);
+      setTemplates((arr) => arr.filter((t) => t.id !== tpl.id));
+      if (activeTemplateId === tpl.id) setActiveTemplateId(null);
+    } catch (e) {
+      console.error(e);
+      alert('Falha ao remover o modelo.');
+    }
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -163,9 +289,100 @@ export default function TicketNew() {
 
   return (
     <AppLayout onNavigate={(to) => navigate(to)}>
-      <section className="mb-6">
-        <h1 className="text-2xl font-semibold text-titulo">Novo Chamado</h1>
-        <p className="text-texto/70">Abra um chamado de transporte</p>
+      <section className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-titulo">Novo Chamado</h1>
+          <p className="text-texto/70">Abra um chamado de transporte</p>
+        </div>
+
+        {/* Dropdown de Modelos */}
+        <div className="relative" ref={dropdownRef}>
+          <button
+            type="button"
+            onClick={() => setTplOpen((v) => !v)}
+            className="rounded-xl border border-borda px-4 py-2 text-texto hover:bg-borda/20"
+            aria-haspopup="menu"
+            aria-expanded={tplOpen}
+          >
+            Modelos
+          </button>
+
+          {tplOpen && (
+            <div className="absolute right-0 z-20 mt-2 w-80 overflow-hidden rounded-xl border border-borda bg-fundo shadow-xl">
+              <div className="p-3 border-b border-borda flex items-center justify-between">
+                <span className="text-sm text-texto/70">Seus modelos</span>
+                <button
+                  type="button"
+                  onClick={openCreateTemplateModal}
+                  className="text-xs rounded-lg border border-azul-claro/30 px-2 py-1 text-azul-claro hover:bg-azul-claro/10"
+                >
+                  Salvar atual
+                </button>
+              </div>
+
+              <div className="max-h-80 overflow-auto p-2">
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-left text-sm hover:bg-borda/20"
+                  onClick={() => { setActiveTemplateId(null); applyTemplate({ data: { form: defaultForm(), origin: defaultOrigin(), destination: defaultDestination(), route: "", assignedUser: { id: null, username: "", role: "" } } }); setTplOpen(false); }}
+                >
+                  <span>Padrão (vazio)</span>
+                </button>
+
+                {tplLoading && (
+                  <div className="px-2 py-2 text-sm text-texto/70">Carregando...</div>
+                )}
+                {tplError && (
+                  <div className="px-2 py-2 text-sm text-red-400">{tplError}</div>
+                )}
+                {!tplLoading && !tplError && templates.length === 0 && (
+                  <div className="px-2 py-2 text-sm text-texto/60">Nenhum modelo salvo ainda.</div>
+                )}
+
+                {templates.map((tpl) => (
+                  <div key={tpl.id} className={`group rounded-lg px-2 py-2 ${activeTemplateId === tpl.id ? 'bg-azul-claro/10' : 'hover:bg-borda/20'}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        className="truncate text-left text-sm text-texto"
+                        onClick={() => { applyTemplate(tpl); setTplOpen(false); }}
+                        title="Aplicar modelo"
+                      >
+                        {tpl.name}
+                      </button>
+                      <div className="flex items-center gap-1 opacity-100">
+                        <button
+                          type="button"
+                          className="rounded-md px-2 py-1 text-xs text-texto/80 hover:bg-borda/30"
+                          onClick={() => handleUpdateWithCurrent(tpl)}
+                          title="Atualizar com o formulário atual"
+                        >
+                          Atualizar
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-md px-2 py-1 text-xs text-texto/80 hover:bg-borda/30"
+                          onClick={() => openRenameTemplateModal(tpl)}
+                          title="Renomear modelo"
+                        >
+                          Renomear
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-md px-2 py-1 text-xs text-red-400 hover:bg-red-500/10"
+                          onClick={() => handleDeleteTemplate(tpl)}
+                          title="Excluir modelo"
+                        >
+                          Excluir
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </section>
 
       <form onSubmit={handleSubmit} className="grid gap-6 lg:grid-cols-[1.6fr_1fr] relative">
@@ -463,6 +680,65 @@ export default function TicketNew() {
           </div>
         </section>
       </form>
+
+      {/* Modal simples para criar/renomear modelo */}
+      {modalOpen && (
+        <div className="fixed inset-0 z-30 grid place-items-center bg-black/50 p-4" role="dialog" aria-modal="true">
+          <div className="w-full max-w-md rounded-2xl border border-borda bg-fundo p-4 shadow-2xl">
+            <h3 className="mb-3 text-lg font-medium text-titulo">
+              {modalType === 'create' ? 'Salvar modelo' : 'Renomear modelo'}
+            </h3>
+            <label className="mb-1 block text-sm text-texto/80">Nome do modelo</label>
+            <input
+              className="mb-4 w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
+              value={modalName}
+              onChange={(e) => setModalName(e.target.value)}
+              autoFocus
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                className="rounded-xl border border-borda px-4 py-2 text-texto"
+                onClick={() => setModalOpen(false)}
+              >
+                Cancelar
+              </button>
+              <Button type="button" onClick={handleModalConfirm}>
+                Salvar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }
+
+// Valores padrão para reset rápido via menu "Padrão (vazio)"
+function defaultForm() {
+  return {
+    title: "",
+    description: "",
+    status: "OPEN",
+    priority: "MEDIUM",
+    freightBasis: "FULL",
+    incoterm: "CIF",
+    paymentTerm: "",
+    paymentType: "",
+    cargoWeight: "",
+    billingCompany: "",
+    plateCavalo: "",
+    plateCarreta1: "",
+    plateCarreta2: "",
+    plateCarreta3: "",
+    fleetType: "FROTA",
+    thirdPartyPayment: "",
+    serviceTaker: "",
+    hasToll: "COM_PEDAGIO",
+    cteRepresentative: "",
+    manifestRepresentative: "",
+  };
+}
+
+function defaultOrigin() { return { city: "", uf: "SC", ibgeId: undefined }; }
+function defaultDestination() { return { city: "", uf: "SC", ibgeId: undefined }; }
