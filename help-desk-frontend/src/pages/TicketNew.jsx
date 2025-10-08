@@ -6,7 +6,7 @@ import RouteSelector from "../components/RouteSelector";
 import Button from "../components/Button";
 import CityUFInput from "../components/CityUFInput";
 import CompanySelect from "../components/CompanySelect";
-import UserSelect from "../components/UserSelect";
+import MultiUserSelect from "../components/MultiUserSelect";
 import { useAuth } from "../context/AuthContext.jsx";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { PageHeaderSkeleton, Skeleton } from "../components/Skeletons";
@@ -19,7 +19,7 @@ export default function TicketNew() {
 
   const [origin, setOrigin] = useState({ city: "", uf: "SC", ibgeId: undefined });
   const [destination, setDestination] = useState({ city: "", uf: "SC", ibgeId: undefined });
-  const [assignedUser, setAssignedUser] = useState({ id: null, username: "", role: "" });
+  const [assignedList, setAssignedList] = useState([]); // unified: first = primary, rest = additional
   const [route, setRoute] = useState(""); // Rota por estados (ex: "SP > PR > SC")
 
   const [form, setForm] = useState({
@@ -33,6 +33,7 @@ export default function TicketNew() {
     incoterm: "CIF",
     paymentTerm: "",
     paymentType: "",
+  freightValue: "",
     cargoWeight: "",
     billingCompany: "",
     plateCavalo: "",
@@ -50,6 +51,7 @@ export default function TicketNew() {
 
   // Máscara monetária (BRL) para pagamento a terceiro
   const [thirdPartyPaymentDisplay, setThirdPartyPaymentDisplay] = useState("");
+  const [freightValueDisplay, setFreightValueDisplay] = useState("");
 
   useEffect(() => {
     const val = form.thirdPartyPayment;
@@ -64,6 +66,18 @@ export default function TicketNew() {
       );
     }
   }, [form.thirdPartyPayment]);
+
+  useEffect(() => {
+    const val = form.freightValue;
+    if (val === "" || val == null) {
+      setFreightValueDisplay("");
+      return;
+    }
+    const num = typeof val === "number" ? val : Number(val);
+    if (!isNaN(num)) {
+      setFreightValueDisplay(num.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }));
+    }
+  }, [form.freightValue]);
 
   function onChangeThirdPartyPayment(e) {
     const input = e.target.value || "";
@@ -81,6 +95,19 @@ export default function TicketNew() {
     setForm((f) => ({ ...f, thirdPartyPayment: number }));
   }
 
+  function onChangeFreightValue(e) {
+    const input = e.target.value || "";
+    const digits = input.replace(/\D/g, "");
+    if (!digits) {
+      setFreightValueDisplay("");
+      setForm((f) => ({ ...f, freightValue: "" }));
+      return;
+    }
+    const number = parseInt(digits, 10) / 100;
+    setFreightValueDisplay(number.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }));
+    setForm((f) => ({ ...f, freightValue: number }));
+  }
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const setv = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -95,10 +122,21 @@ export default function TicketNew() {
   const [activeTemplateId, setActiveTemplateId] = useState(null);
 
   const [modalOpen, setModalOpen] = useState(false);
-  const [modalType, setModalType] = useState("create"); // 'create' | 'rename'
+  const [modalType, setModalType] = useState("create"); // 'create' | 'rename' | 'delete'
   const [modalName, setModalName] = useState("");
   const [editingTemplate, setEditingTemplate] = useState(null);
+  const [modalError, setModalError] = useState("");
+  const [modalLoading, setModalLoading] = useState(false);
   const dropdownRef = useRef(null);
+  const [busyTplIds, setBusyTplIds] = useState(() => new Set());
+
+  function setTplBusy(id, busy) {
+    setBusyTplIds(prev => {
+      const next = new Set(prev);
+      if (busy) next.add(id); else next.delete(id);
+      return next;
+    });
+  }
 
   useEffect(() => {
     loadTemplates();
@@ -135,7 +173,7 @@ export default function TicketNew() {
       origin,
       destination,
       route,
-      assignedUser,
+      assignedList,
     };
   }
 
@@ -147,8 +185,8 @@ export default function TicketNew() {
       if (data.form) setForm((prev) => ({ ...prev, ...data.form }));
       if (data.origin) setOrigin(data.origin);
       if (data.destination) setDestination(data.destination);
-      if (typeof data.route === 'string') setRoute(data.route);
-      if (data.assignedUser) setAssignedUser(data.assignedUser);
+    if (typeof data.route === 'string') setRoute(data.route);
+    if (Array.isArray(data.assignedList)) setAssignedList(data.assignedList);
       setActiveTemplateId(tpl.id ?? null);
     } catch (e) {
       console.error('Falha ao aplicar modelo', e);
@@ -159,6 +197,7 @@ export default function TicketNew() {
     setModalType('create');
     setModalName('');
     setEditingTemplate(null);
+    setModalError("");
     setModalOpen(true);
   }
 
@@ -166,11 +205,21 @@ export default function TicketNew() {
     setModalType('rename');
     setModalName(tpl?.name || '');
     setEditingTemplate(tpl);
+    setModalError("");
+    setModalOpen(true);
+  }
+
+  function openDeleteTemplateModal(tpl) {
+    setModalType('delete');
+    setEditingTemplate(tpl);
+    setModalError("");
     setModalOpen(true);
   }
 
   async function handleModalConfirm() {
     try {
+      if (modalLoading) return;
+      setModalLoading(true);
       if (!modalName.trim()) return;
       if (modalType === 'create') {
         const created = await createTemplate({ name: modalName.trim(), data: buildTemplateData() });
@@ -184,29 +233,40 @@ export default function TicketNew() {
     } catch (e) {
       console.error(e);
       alert('Não foi possível salvar o modelo.');
+    } finally {
+      setModalLoading(false);
     }
   }
 
   async function handleUpdateWithCurrent(tpl) {
     try {
+      if (busyTplIds.has(tpl.id)) return;
+      setTplBusy(tpl.id, true);
       const updated = await updateTemplate(tpl.id, { name: tpl.name, data: buildTemplateData() });
       setTemplates((arr) => arr.map((t) => t.id === tpl.id ? updated : t));
       setActiveTemplateId(tpl.id);
     } catch (e) {
       console.error(e);
       alert('Falha ao atualizar o modelo.');
+    } finally {
+      setTplBusy(tpl.id, false);
     }
   }
 
-  async function handleDeleteTemplate(tpl) {
-    if (!confirm(`Remover o modelo "${tpl.name}"?`)) return;
+  async function performDeleteTemplate() {
+    if (!editingTemplate) return;
+    setModalLoading(true);
+    setModalError("");
     try {
-      await deleteTemplate(tpl.id);
-      setTemplates((arr) => arr.filter((t) => t.id !== tpl.id));
-      if (activeTemplateId === tpl.id) setActiveTemplateId(null);
+      await deleteTemplate(editingTemplate.id);
+      setTemplates((arr) => arr.filter((t) => t.id !== editingTemplate.id));
+      if (activeTemplateId === editingTemplate.id) setActiveTemplateId(null);
+      setModalOpen(false);
     } catch (e) {
       console.error(e);
-      alert('Falha ao remover o modelo.');
+      setModalError('Falha ao remover o modelo.');
+    } finally {
+      setModalLoading(false);
     }
   }
 
@@ -235,6 +295,7 @@ export default function TicketNew() {
         incoterm: form.incoterm,
         paymentTerm: form.paymentTerm || undefined,
         paymentType: form.paymentType || undefined,
+  freightValue: form.freightValue ? Number(form.freightValue) : undefined,
         cargoWeight: form.cargoWeight ? Number(form.cargoWeight) : undefined,
         billingCompany: form.billingCompany || undefined,
         plateCavalo: form.plateCavalo || undefined,
@@ -251,10 +312,11 @@ export default function TicketNew() {
         cteRepresentative: form.cteRepresentative || undefined,
         manifestRepresentative: form.manifestRepresentative || undefined,
 
-        assignedToId: assignedUser.id || undefined,
+  assignedToId: (assignedList && assignedList[0]?.id) || undefined,
+  assignedUserIds: (assignedList || []).slice(1).map(u => u.id).filter(Boolean),
       };
 
-      const t = await createTicket(payload);
+  const t = await createTicket(payload);
       navigate(`/tickets/${t.id}`, { replace: true });
     } catch (e) {
       setError(e?.message || "Erro ao criar chamado");
@@ -314,7 +376,8 @@ export default function TicketNew() {
                 <button
                   type="button"
                   onClick={openCreateTemplateModal}
-                  className="text-xs rounded-lg border border-azul-claro/30 px-2 py-1 text-azul-claro hover:bg-azul-claro/10"
+                  className="text-xs rounded-lg border border-azul-claro/30 px-2 py-1 text-azul-claro hover:bg-azul-claro/10 disabled:opacity-60"
+                  disabled={modalOpen || modalLoading}
                 >
                   Salvar atual
                 </button>
@@ -324,7 +387,7 @@ export default function TicketNew() {
                 <button
                   type="button"
                   className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-left text-sm hover:bg-borda/20"
-                  onClick={() => { setActiveTemplateId(null); applyTemplate({ data: { form: defaultForm(), origin: defaultOrigin(), destination: defaultDestination(), route: "", assignedUser: { id: null, username: "", role: "" } } }); setTplOpen(false); }}
+                  onClick={() => { setActiveTemplateId(null); applyTemplate({ data: { form: defaultForm(), origin: defaultOrigin(), destination: defaultDestination(), route: "", assignedList: [] } }); setTplOpen(false); }}
                 >
                   <span>Padrão (vazio)</span>
                 </button>
@@ -353,24 +416,27 @@ export default function TicketNew() {
                       <div className="flex items-center gap-1 opacity-100">
                         <button
                           type="button"
-                          className="rounded-md px-2 py-1 text-xs text-texto/80 hover:bg-borda/30"
+                          className="rounded-md px-2 py-1 text-xs text-texto/80 hover:bg-borda/30 disabled:opacity-60"
                           onClick={() => handleUpdateWithCurrent(tpl)}
+                          disabled={busyTplIds.has(tpl.id)}
                           title="Atualizar com o formulário atual"
                         >
-                          Atualizar
+                          {busyTplIds.has(tpl.id) ? 'Atualizando...' : 'Atualizar'}
                         </button>
                         <button
                           type="button"
-                          className="rounded-md px-2 py-1 text-xs text-texto/80 hover:bg-borda/30"
+                          className="rounded-md px-2 py-1 text-xs text-texto/80 hover:bg-borda/30 disabled:opacity-60"
                           onClick={() => openRenameTemplateModal(tpl)}
+                          disabled={busyTplIds.has(tpl.id)}
                           title="Renomear modelo"
                         >
                           Renomear
                         </button>
                         <button
                           type="button"
-                          className="rounded-md px-2 py-1 text-xs text-red-400 hover:bg-red-500/10"
-                          onClick={() => handleDeleteTemplate(tpl)}
+                          className="rounded-md px-2 py-1 text-xs text-red-400 hover:bg-red-500/10 disabled:opacity-60"
+                          onClick={() => openDeleteTemplateModal(tpl)}
+                          disabled={busyTplIds.has(tpl.id)}
                           title="Excluir modelo"
                         >
                           Excluir
@@ -454,6 +520,17 @@ export default function TicketNew() {
             </div>
 
             <div className="grid gap-6 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm text-texto/80">Valor do frete</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
+                  placeholder="R$ 0,00"
+                  value={freightValueDisplay}
+                  onChange={onChangeFreightValue}
+                />
+              </div>
               <div>
                 <label className="mb-1 block text-sm text-texto/80">Prazo para pagamento</label>
                 <input
@@ -657,12 +734,13 @@ export default function TicketNew() {
             </div>
 
             {user && (
-              <UserSelect
-                label="Atribuir para"
-                value={assignedUser}
-                onChange={setAssignedUser}
-                placeholder="Selecione um usuário (opcional)"
-              />
+              <div className="space-y-3">
+                <MultiUserSelect
+                  label="Atribuir para"
+                  value={assignedList}
+                  onChange={setAssignedList}
+                />
+              </div>
             )}
 
             <div className="flex gap-2">
@@ -685,28 +763,64 @@ export default function TicketNew() {
       {modalOpen && (
         <div className="fixed inset-0 z-30 grid place-items-center bg-black/50 p-4" role="dialog" aria-modal="true">
           <div className="w-full max-w-md rounded-2xl border border-borda bg-fundo p-4 shadow-2xl">
-            <h3 className="mb-3 text-lg font-medium text-titulo">
-              {modalType === 'create' ? 'Salvar modelo' : 'Renomear modelo'}
-            </h3>
-            <label className="mb-1 block text-sm text-texto/80">Nome do modelo</label>
-            <input
-              className="mb-4 w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
-              value={modalName}
-              onChange={(e) => setModalName(e.target.value)}
-              autoFocus
-            />
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                className="rounded-xl border border-borda px-4 py-2 text-texto"
-                onClick={() => setModalOpen(false)}
-              >
-                Cancelar
-              </button>
-              <Button type="button" onClick={handleModalConfirm}>
-                Salvar
-              </Button>
-            </div>
+            {modalType !== 'delete' ? (
+              <>
+                <h3 className="mb-3 text-lg font-medium text-titulo">
+                  {modalType === 'create' ? 'Salvar modelo' : 'Renomear modelo'}
+                </h3>
+                <label className="mb-1 block text-sm text-texto/80">Nome do modelo</label>
+                <input
+                  className="mb-3 w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto"
+                  value={modalName}
+                  onChange={(e) => setModalName(e.target.value)}
+                  autoFocus
+                />
+                {modalError && (
+                  <div className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 p-2 text-sm text-red-300">{modalError}</div>
+                )}
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    className="rounded-xl border border-borda px-4 py-2 text-texto"
+                    onClick={() => setModalOpen(false)}
+                  >
+                    Cancelar
+                  </button>
+                  <Button type="button" onClick={handleModalConfirm} disabled={modalLoading}>
+                    Salvar
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 className="mb-3 text-lg font-medium text-titulo">Excluir modelo</h3>
+                <p className="mb-4 text-sm text-texto/80">
+                  Tem certeza que deseja excluir o modelo <span className="font-medium text-texto">"{editingTemplate?.name}"</span>?
+                  Esta ação não pode ser desfeita.
+                </p>
+                {modalError && (
+                  <div className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 p-2 text-sm text-red-300">{modalError}</div>
+                )}
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    className="rounded-xl border border-borda px-4 py-2 text-texto"
+                    onClick={() => setModalOpen(false)}
+                    disabled={modalLoading}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2 text-red-300 hover:bg-red-500/20 disabled:opacity-60"
+                    onClick={performDeleteTemplate}
+                    disabled={modalLoading}
+                  >
+                    {modalLoading ? 'Excluindo...' : 'Excluir'}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

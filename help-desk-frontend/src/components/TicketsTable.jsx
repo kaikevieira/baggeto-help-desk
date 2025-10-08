@@ -23,7 +23,19 @@ export default function TicketsTable({ tickets = [], onView }) {
                 #{t.ticketNumber || t.id}
               </td>
               <td className="px-4 py-3 text-texto font-medium">{t.title}</td>
-              <td className="px-4 py-3 text-texto">{t.assignedTo || '-'}</td>
+              <td className="px-4 py-3 text-texto">
+                {Array.isArray(t.assignees) && t.assignees.length > 0 ? (
+                  <div className="flex flex-wrap gap-1">
+                    {t.assignees.map((u) => (
+                      <span key={u.id} className="px-2 py-0.5 text-xs rounded-md bg-azul-claro/20 text-azul-claro border border-azul-claro/30">
+                        {u.username}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  '-'
+                )}
+              </td>
               <td className="px-4 py-3">
                 <PriorityPill priority={t.priority} />
               </td>

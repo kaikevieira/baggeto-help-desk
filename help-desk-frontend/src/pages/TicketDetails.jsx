@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { addComment, getTicket, listComments, updateTicket } from "../api/tickets";
+import { addComment, getTicket, listComments, updateTicket, deleteTicket } from "../api/tickets";
 import UserSelect from "../components/UserSelect";
 import AppLayout from "../components/AppLayout";
 import Button from "../components/Button";
@@ -8,12 +8,21 @@ import StatusPill from "../components/StatusPill";
 import { useAuth } from "../context/AuthContext.jsx";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { FullPageSkeleton } from "../components/Skeletons";
+import CityUFInput from "../components/CityUFInput";
+import RouteSelector from "../components/RouteSelector";
+import MultiUserSelect from "../components/MultiUserSelect";
 
 export default function TicketDetails() {
   const navigate = useNavigate();
   const { id } = useParams();
   const { user } = useAuth();
   const [ticket, setTicket] = useState(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  // máscara de frete (BRL)
+  const [freightDisplay, setFreightDisplay] = useState("");
+  const [freightNumber, setFreightNumber] = useState(null);
   
   // Título dinâmico baseado no ticket
   usePageTitle(ticket ? `Ticket #${ticket.id} - ${ticket.title}` : `Ticket #${id}`);
@@ -41,6 +50,21 @@ export default function TicketDetails() {
     }
   }
 
+  useEffect(() => {
+    // sincroniza máscara de frete com dados do ticket
+    const val = ticket?.freightValue;
+    if (val == null || val === "") {
+      setFreightDisplay("");
+      setFreightNumber(null);
+      return;
+    }
+    const num = typeof val === 'number' ? val : Number(val);
+    if (!isNaN(num)) {
+      setFreightNumber(num);
+      setFreightDisplay(num.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }));
+    }
+  }, [ticket?.freightValue]);
+
   async function saveField(field, value) {
     setSaving(true);
     try {
@@ -48,7 +72,21 @@ export default function TicketDetails() {
         field === "cargoWeight" || field === "thirdPartyPayment"
           ? { [field]: value === "" || value == null ? null : Number(value) }
           : { [field]: value };
-      const updated = await updateTicket(id, payload);
+      const key = `ticket-update:${id}:${field}:${Date.now()}`;
+      const updated = await updateTicket(id, payload, { idempotencyKey: key });
+      setTicket(updated);
+    } catch (e) {
+      setError(e?.message || "Erro ao salvar");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function saveFields(payload) {
+    setSaving(true);
+    try {
+      const key = `ticket-update:${id}:${Object.keys(payload).join(',')}:${Date.now()}`;
+      const updated = await updateTicket(id, payload, { idempotencyKey: key });
       setTicket(updated);
     } catch (e) {
       setError(e?.message || "Erro ao salvar");
@@ -60,10 +98,34 @@ export default function TicketDetails() {
   async function submitComment(e) {
     e.preventDefault();
     if (!newComment.trim()) return;
-    await addComment(id, newComment.trim());
-    setNewComment("");
-    const cs = await listComments(id);
-    setComments(cs);
+    setSaving(true);
+    try {
+      const key = `comment-create:${id}:${Date.now()}`;
+      await addComment(id, newComment.trim(), { idempotencyKey: key });
+      setNewComment("");
+      const cs = await listComments(id);
+      setComments(cs);
+    } catch (e) {
+      setError(e?.message || "Erro ao comentar");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // Exclusão do ticket (apenas criador)
+  async function confirmDelete() {
+    if (deleteLoading) return;
+    setDeleteLoading(true);
+    setDeleteError("");
+    try {
+      await deleteTicket(id, { idempotencyKey: `ticket-delete:${id}` });
+      setDeleteOpen(false);
+      navigate("/tickets", { replace: true });
+    } catch (e) {
+      setDeleteError(e?.message || "Erro ao excluir o ticket");
+    } finally {
+      setDeleteLoading(false);
+    }
   }
 
   // Regras:
@@ -73,10 +135,12 @@ export default function TicketDetails() {
   // então devemos comparar com user.id (não user.sub)
   const isCreator = user && ticket && user.id === ticket.createdById;
   const isAdmin = user && user.role === "ADMIN";
-  const canEdit = !!(isAdmin || isCreator);
+  const isAssigned = !!(user && ticket && ((ticket.assignedToId && ticket.assignedToId === user.id) || (Array.isArray(ticket.assignees) && ticket.assignees.some(a => a.userId === user.id))));
+  const canEditFull = !!(isAdmin || isCreator);
+  const canEditOperational = !!(isAdmin || isCreator || isAssigned);
   
   function toggleEdit() {
-    if (canEdit) setIsEditing(!isEditing);
+    if (canEditOperational) setIsEditing(!isEditing);
   }
 
   function getPriorityColor(priority) {
@@ -119,18 +183,31 @@ export default function TicketDetails() {
                   </span>
                   <span className="truncate min-w-0">Criado por <strong className="text-texto">{ticket.createdBy?.username}</strong></span>
                   <span className="whitespace-nowrap flex-shrink-0">em {new Date(ticket.createdAt).toLocaleDateString('pt-BR')}</span>
-                  {ticket.assignedTo && (
-                    <span className="truncate min-w-0">Atribuído para <strong className="text-texto">{ticket.assignedTo.username}</strong></span>
+                  {(ticket.assignedTo || (ticket.assignees && ticket.assignees.length)) && (
+                    <span className="truncate min-w-0">
+                      Atribuído para
+                      <strong className="text-texto"> {
+                        [
+                          ...(ticket.assignedTo ? [ticket.assignedTo.username] : []),
+                          ...((ticket.assignees || []).map(a => a.user?.username).filter(Boolean))
+                        ].join(', ')
+                      } </strong>
+                    </span>
                   )}
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
-                {canEdit && (
+                {canEditOperational && (
                   <Button 
                     onClick={toggleEdit} 
                     className={`px-2 sm:px-4 py-2 min-w-[70px] sm:min-w-[100px] text-xs sm:text-sm ${isEditing ? 'bg-green-600 hover:bg-green-700' : 'bg-azul-claro hover:bg-azul-claro/80'}`}
                   >
                     {isEditing ? '💾 Salvar' : '✏️ Editar'}
+                  </Button>
+                )}
+                {isCreator && (
+                  <Button onClick={() => setDeleteOpen(true)} className="bg-red-600 hover:bg-red-700 px-2 sm:px-4 py-2 min-w-[70px] sm:min-w-[100px] text-xs sm:text-sm">
+                    Excluir
                   </Button>
                 )}
                 <Button onClick={() => navigate("/tickets")} className="bg-gray-600 hover:bg-gray-700 px-2 sm:px-4 py-2 min-w-[70px] sm:min-w-[100px] text-xs sm:text-sm">
@@ -165,32 +242,55 @@ export default function TicketDetails() {
                   <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
                     <div className="min-w-0">
                       <label className="mb-2 block text-sm font-medium text-texto/80">Origem</label>
-                      <div className="rounded-xl border border-borda bg-fundo/50 px-3 sm:px-4 py-3 text-texto font-medium truncate">
-                        {ticket.originCity && ticket.originUF ? `${ticket.originCity}/${ticket.originUF}` : "Não informado"}
-                      </div>
+                      {isEditing && canEditFull ? (
+                        <CityUFInput
+                          value={{ city: ticket.originCity || "", uf: ticket.originUF || "", ibgeId: ticket.originIBGEId || undefined }}
+                          onChange={(v) => saveFields({ originCity: v.city, originUF: v.uf, originIBGEId: v.ibgeId })}
+                        />
+                      ) : (
+                        <div className="rounded-xl border border-borda bg-fundo/50 px-3 sm:px-4 py-3 text-texto font-medium truncate">
+                          {ticket.originCity && ticket.originUF ? `${ticket.originCity}/${ticket.originUF}` : "Não informado"}
+                        </div>
+                      )}
                     </div>
                     <div className="min-w-0">
                       <label className="mb-2 block text-sm font-medium text-texto/80">Destino</label>
-                      <div className="rounded-xl border border-borda bg-fundo/50 px-3 sm:px-4 py-3 text-texto font-medium truncate">
-                        {ticket.destinationCity && ticket.destinationUF ? `${ticket.destinationCity}/${ticket.destinationUF}` : "Não informado"}
-                      </div>
+                      {isEditing && canEditFull ? (
+                        <CityUFInput
+                          value={{ city: ticket.destinationCity || "", uf: ticket.destinationUF || "", ibgeId: ticket.destinationIBGEId || undefined }}
+                          onChange={(v) => saveFields({ destinationCity: v.city, destinationUF: v.uf, destinationIBGEId: v.ibgeId })}
+                        />
+                      ) : (
+                        <div className="rounded-xl border border-borda bg-fundo/50 px-3 sm:px-4 py-3 text-texto font-medium truncate">
+                          {ticket.destinationCity && ticket.destinationUF ? `${ticket.destinationCity}/${ticket.destinationUF}` : "Não informado"}
+                        </div>
+                      )}
                     </div>
                   </div>
                   
                   {/* ROTA POR ESTADOS */}
-                  {ticket.route && (
-                    <div className="mt-4">
-                      <label className="mb-2 block text-sm font-medium text-texto/80">Rota por Estados</label>
-                      <div className="rounded-xl border border-azul-claro/30 bg-azul-claro/10 px-3 sm:px-4 py-3">
-                        <div className="text-azul-claro font-mono text-lg font-semibold text-center">
-                          {ticket.route}
+                  <div className="mt-4">
+                    {isEditing && canEditFull ? (
+                      <RouteSelector
+                        value={ticket.route || ""}
+                        onChange={(val) => saveField("route", val || "")}
+                        startUF={ticket.originUF || ""}
+                        endUF={ticket.destinationUF || ""}
+                      />
+                    ) : (
+                      <>
+                        <label className="mb-2 block text-sm font-medium text-texto/80">Rota por Estados</label>
+                        <div className="rounded-xl border border-azul-claro/30 bg-azul-claro/10 px-3 sm:px-4 py-3">
+                          <div className="text-azul-claro font-mono text-lg font-semibold text-center">
+                            {ticket.route || "—"}
+                          </div>
+                          <div className="text-xs text-azul-claro/70 text-center mt-1">
+                            Roteiro de estados por onde a carga irá passar
+                          </div>
                         </div>
-                        <div className="text-xs text-azul-claro/70 text-center mt-1">
-                          Roteiro de estados por onde a carga irá passar
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 {/* CONFIGURAÇÕES DE FRETE */}
@@ -199,11 +299,11 @@ export default function TicketDetails() {
                     <label className="mb-2 block text-sm font-medium text-texto/80">Tipo de Frete</label>
                     <select
                       className={`w-full min-w-0 rounded-xl border border-borda px-3 sm:px-4 py-3 text-texto transition-all ${
-                        isEditing ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
+                        isEditing && canEditFull ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
                       }`}
                       value={ticket.freightBasis || "FULL"}
-                      onChange={(e) => isEditing && saveField("freightBasis", e.target.value)}
-                      disabled={!isEditing}
+                      onChange={(e) => isEditing && canEditFull && saveField("freightBasis", e.target.value)}
+                      disabled={!(isEditing && canEditFull)}
                     >
                       <option value="FULL">Frete Cheio</option>
                       <option value="TON">Frete Tonelada</option>
@@ -214,11 +314,11 @@ export default function TicketDetails() {
                     <label className="mb-2 block text-sm font-medium text-texto/80">Modalidade</label>
                     <select
                       className={`w-full min-w-0 rounded-xl border border-borda px-3 sm:px-4 py-3 text-texto transition-all ${
-                        isEditing ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
+                        isEditing && canEditFull ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
                       }`}
                       value={ticket.incoterm || "CIF"}
-                      onChange={(e) => isEditing && saveField("incoterm", e.target.value)}
-                      disabled={!isEditing}
+                      onChange={(e) => isEditing && canEditFull && saveField("incoterm", e.target.value)}
+                      disabled={!(isEditing && canEditFull)}
                     >
                       <option value="CIF">CIF</option>
                       <option value="FOB">FOB</option>
@@ -228,11 +328,11 @@ export default function TicketDetails() {
                       <label className="mb-2 block text-sm font-medium text-texto/80">Tomador de serviço</label>
                       <input
                         className={`w-full rounded-xl border border-borda px-4 py-3 text-texto transition-all ${
-                          isEditing ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
+                          isEditing && canEditFull ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
                         }`}
                         defaultValue={ticket.serviceTaker || ""}
-                        onBlur={(e) => isEditing && saveField("serviceTaker", e.target.value)}
-                        disabled={!isEditing}
+                        onBlur={(e) => isEditing && canEditFull && saveField("serviceTaker", e.target.value)}
+                        disabled={!(isEditing && canEditFull)}
                         placeholder="Nome do tomador"
                       />
                     </div>
@@ -244,7 +344,7 @@ export default function TicketDetails() {
                     📝 Descrição do Chamado
                   </h3>
                   <div className="rounded-lg bg-fundo/50 border border-borda px-3 sm:px-4 py-3 max-w-full overflow-hidden">
-                    {isEditing ? (
+                    {isEditing && canEditFull ? (
                       <textarea
                         className="w-full min-w-0 bg-transparent border-none resize-none focus:outline-none text-texto"
                         rows={4}
@@ -264,14 +364,37 @@ export default function TicketDetails() {
                   </h3>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
+                      <label className="mb-2 block text-sm font-medium text-texto/80">Valor do frete (R$)</label>
+                      <input
+                        className={`w-full rounded-xl border border-borda px-4 py-3 text-texto transition-all ${
+                          isEditing && canEditFull ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
+                        }`}
+                        value={freightDisplay}
+                        onChange={(e) => {
+                          const digits = (e.target.value || "").replace(/\D/g, "");
+                          if (!digits) {
+                            setFreightDisplay("");
+                            setFreightNumber(null);
+                          } else {
+                            const number = parseInt(digits, 10) / 100;
+                            setFreightNumber(number);
+                            setFreightDisplay(number.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }));
+                          }
+                        }}
+                        onBlur={() => isEditing && canEditFull && saveField("freightValue", freightNumber)}
+                        disabled={!(isEditing && canEditFull)}
+                        placeholder="R$ 0,00"
+                      />
+                    </div>
+                    <div>
                       <label className="mb-2 block text-sm font-medium text-texto/80">Prazo para pagamento</label>
                       <input
                         className={`w-full rounded-xl border border-borda px-4 py-3 text-texto transition-all ${
-                          isEditing ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
+                          isEditing && canEditFull ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
                         }`}
                         defaultValue={ticket.paymentTerm || ""}
-                        onBlur={(e) => isEditing && saveField("paymentTerm", e.target.value)}
-                        disabled={!isEditing}
+                        onBlur={(e) => isEditing && canEditFull && saveField("paymentTerm", e.target.value)}
+                        disabled={!(isEditing && canEditFull)}
                         placeholder="Ex: à vista, 15 dias, 30 dias"
                       />
                     </div>
@@ -279,11 +402,11 @@ export default function TicketDetails() {
                       <label className="mb-2 block text-sm font-medium text-texto/80">Tipo de pagamento</label>
                       <input
                         className={`w-full rounded-xl border border-borda px-4 py-3 text-texto transition-all ${
-                          isEditing ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
+                          isEditing && canEditFull ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
                         }`}
                         defaultValue={ticket.paymentType || ""}
-                        onBlur={(e) => isEditing && saveField("paymentType", e.target.value)}
-                        disabled={!isEditing}
+                        onBlur={(e) => isEditing && canEditFull && saveField("paymentType", e.target.value)}
+                        disabled={!(isEditing && canEditFull)}
                         placeholder="Ex: PIX, Boleto, TED"
                       />
                     </div>
@@ -303,11 +426,11 @@ export default function TicketDetails() {
                         step="0.001"
                         min="0"
                         className={`w-full rounded-xl border border-borda px-4 py-3 text-texto transition-all ${
-                          isEditing ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
+                          isEditing && canEditFull ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
                         }`}
                         defaultValue={ticket.cargoWeight ?? ""}
-                        onBlur={(e) => isEditing && saveField("cargoWeight", e.target.value)}
-                        disabled={!isEditing}
+                        onBlur={(e) => isEditing && canEditFull && saveField("cargoWeight", e.target.value)}
+                        disabled={!(isEditing && canEditFull)}
                         placeholder="Ex: 28.500"
                       />
                     </div>
@@ -315,11 +438,11 @@ export default function TicketDetails() {
                       <label className="mb-2 block text-sm font-medium text-texto/80">Empresa de faturamento</label>
                       <input
                         className={`w-full rounded-xl border border-borda px-4 py-3 text-texto transition-all ${
-                          isEditing ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
+                          isEditing && canEditFull ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
                         }`}
                         defaultValue={ticket.billingCompany || ""}
-                        onBlur={(e) => isEditing && saveField("billingCompany", e.target.value)}
-                        disabled={!isEditing}
+                        onBlur={(e) => isEditing && canEditFull && saveField("billingCompany", e.target.value)}
+                        disabled={!(isEditing && canEditFull)}
                         placeholder="Nome da empresa"
                       />
                     </div>
@@ -336,11 +459,11 @@ export default function TicketDetails() {
                       <label className="mb-2 block text-sm font-medium text-texto/80">Placa (Cavalo)</label>
                       <input
                         className={`w-full rounded-xl border border-borda px-4 py-3 text-texto transition-all font-mono uppercase tracking-wider ${
-                          isEditing ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
+                          isEditing && canEditFull ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
                         }`}
                         defaultValue={ticket.plateCavalo || ""}
-                        onBlur={(e) => isEditing && saveField("plateCavalo", e.target.value.toUpperCase())}
-                        disabled={!isEditing}
+                        onBlur={(e) => isEditing && canEditFull && saveField("plateCavalo", e.target.value.toUpperCase())}
+                        disabled={!(isEditing && canEditFull)}
                         placeholder="Ex: ABC1234"
                       />
                     </div>
@@ -348,11 +471,11 @@ export default function TicketDetails() {
                       <label className="mb-2 block text-sm font-medium text-texto/80">Placa (1ª carreta)</label>
                       <input
                         className={`w-full rounded-xl border border-borda px-4 py-3 text-texto transition-all font-mono uppercase tracking-wider ${
-                          isEditing ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
+                          isEditing && canEditFull ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
                         }`}
                         defaultValue={ticket.plateCarreta1 || ""}
-                        onBlur={(e) => isEditing && saveField("plateCarreta1", e.target.value.toUpperCase())}
-                        disabled={!isEditing}
+                        onBlur={(e) => isEditing && canEditFull && saveField("plateCarreta1", e.target.value.toUpperCase())}
+                        disabled={!(isEditing && canEditFull)}
                         placeholder="Ex: ABC1234"
                       />
                     </div>
@@ -360,11 +483,11 @@ export default function TicketDetails() {
                       <label className="mb-2 block text-sm font-medium text-texto/80">Placa (2ª carreta / Dolly)</label>
                       <input
                         className={`w-full rounded-xl border border-borda px-4 py-3 text-texto transition-all font-mono uppercase tracking-wider ${
-                          isEditing ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
+                          isEditing && canEditFull ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
                         }`}
                         defaultValue={ticket.plateCarreta2 || ""}
-                        onBlur={(e) => isEditing && saveField("plateCarreta2", e.target.value.toUpperCase())}
-                        disabled={!isEditing}
+                        onBlur={(e) => isEditing && canEditFull && saveField("plateCarreta2", e.target.value.toUpperCase())}
+                        disabled={!(isEditing && canEditFull)}
                         placeholder="Ex: ABC1234"
                       />
                     </div>
@@ -372,11 +495,11 @@ export default function TicketDetails() {
                       <label className="mb-2 block text-sm font-medium text-texto/80">Placa (3ª carreta)</label>
                       <input
                         className={`w-full rounded-xl border border-borda px-4 py-3 text-texto transition-all font-mono uppercase tracking-wider ${
-                          isEditing ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
+                          isEditing && canEditFull ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
                         }`}
                         defaultValue={ticket.plateCarreta3 || ""}
-                        onBlur={(e) => isEditing && saveField("plateCarreta3", e.target.value.toUpperCase())}
-                        disabled={!isEditing}
+                        onBlur={(e) => isEditing && canEditFull && saveField("plateCarreta3", e.target.value.toUpperCase())}
+                        disabled={!(isEditing && canEditFull)}
                         placeholder="Ex: ABC1234"
                       />
                     </div>
@@ -393,11 +516,11 @@ export default function TicketDetails() {
                       <label className="mb-2 block text-sm font-medium text-texto/80">Propriedade do veículo</label>
                       <select
                         className={`w-full rounded-xl border border-borda px-4 py-3 text-texto transition-all ${
-                          isEditing ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
+                          isEditing && canEditFull ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
                         }`}
                         value={ticket.fleetType || "FROTA"}
-                        onChange={(e) => isEditing && saveField("fleetType", e.target.value)}
-                        disabled={!isEditing}
+                        onChange={(e) => isEditing && canEditFull && saveField("fleetType", e.target.value)}
+                        disabled={!(isEditing && canEditFull)}
                       >
                         <option value="FROTA">Frota</option>
                         <option value="TERCEIRO">Terceiro</option>
@@ -411,11 +534,11 @@ export default function TicketDetails() {
                           step="0.01"
                           min="0"
                           className={`w-full rounded-xl border border-borda px-4 py-3 text-texto transition-all ${
-                            isEditing ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
+                            isEditing && canEditFull ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
                           }`}
                           defaultValue={ticket.thirdPartyPayment ?? ""}
-                          onBlur={(e) => isEditing && saveField("thirdPartyPayment", e.target.value)}
-                          disabled={!isEditing}
+                          onBlur={(e) => isEditing && canEditFull && saveField("thirdPartyPayment", e.target.value)}
+                          disabled={!(isEditing && canEditFull)}
                           placeholder="0,00"
                         />
                       </div>
@@ -428,11 +551,11 @@ export default function TicketDetails() {
                     <label className="mb-2 block text-sm font-medium text-texto/80">Pedágio</label>
                     <select
                       className={`w-full rounded-xl border border-borda px-4 py-3 text-texto transition-all ${
-                        isEditing ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
+                        isEditing && canEditFull ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
                       }`}
                       value={ticket.hasToll || ""}
-                      onChange={(e) => isEditing && saveField("hasToll", e.target.value || null)}
-                      disabled={!isEditing}
+                      onChange={(e) => isEditing && canEditFull && saveField("hasToll", e.target.value || null)}
+                      disabled={!(isEditing && canEditFull)}
                     >
                       <option value="">Não especificado</option>
                       <option value="COM_PEDAGIO">Com Pedágio</option>
@@ -445,11 +568,11 @@ export default function TicketDetails() {
                     <label className="mb-2 block text-sm font-medium text-texto/80">Representante do CTE</label>
                     <input
                       className={`w-full rounded-xl border border-borda px-4 py-3 text-texto transition-all ${
-                        isEditing ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
+                        isEditing && canEditFull ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
                       }`}
                       defaultValue={ticket.cteRepresentative || ""}
-                      onBlur={(e) => isEditing && saveField("cteRepresentative", e.target.value)}
-                      disabled={!isEditing}
+                      onBlur={(e) => isEditing && canEditFull && saveField("cteRepresentative", e.target.value)}
+                      disabled={!(isEditing && canEditFull)}
                       placeholder="Nome do representante"
                     />
                   </div>
@@ -458,11 +581,11 @@ export default function TicketDetails() {
                     <label className="mb-2 block text-sm font-medium text-texto/80">Representante do Manifesto</label>
                     <input
                       className={`w-full rounded-xl border border-borda px-4 py-3 text-texto transition-all ${
-                        isEditing ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
+                        isEditing && canEditFull ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
                       }`}
                       defaultValue={ticket.manifestRepresentative || ""}
-                      onBlur={(e) => isEditing && saveField("manifestRepresentative", e.target.value)}
-                      disabled={!isEditing}
+                      onBlur={(e) => isEditing && canEditFull && saveField("manifestRepresentative", e.target.value)}
+                      disabled={!(isEditing && canEditFull)}
                       placeholder="Nome do representante"
                     />
                   </div>
@@ -492,11 +615,11 @@ export default function TicketDetails() {
                   <label className="mb-2 block text-sm font-medium text-texto/80">Status</label>
                   <select
                     className={`w-full rounded-xl border border-borda px-4 py-3 text-texto transition-all ${
-                      isEditing ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
+                      isEditing && canEditOperational ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
                     }`}
                     value={ticket.status}
-                    onChange={(e) => isEditing && saveField("status", e.target.value)}
-                    disabled={!isEditing}
+                    onChange={(e) => isEditing && canEditOperational && saveField("status", e.target.value)}
+                    disabled={!(isEditing && canEditOperational)}
                   >
                     <option value="OPEN">Aberto</option>
                     <option value="IN_PROGRESS">Em Andamento</option>
@@ -509,11 +632,11 @@ export default function TicketDetails() {
                   <label className="mb-2 block text-sm font-medium text-texto/80">Prioridade</label>
                   <select
                     className={`w-full rounded-xl border border-borda px-4 py-3 text-texto transition-all ${
-                      isEditing ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
+                      isEditing && canEditOperational ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
                     }`}
                     value={ticket.priority}
-                    onChange={(e) => isEditing && saveField("priority", e.target.value)}
-                    disabled={!isEditing}
+                    onChange={(e) => isEditing && canEditOperational && saveField("priority", e.target.value)}
+                    disabled={!(isEditing && canEditOperational)}
                   >
                     <option value="LOW">Baixa</option>
                     <option value="MEDIUM">Média</option>
@@ -523,18 +646,38 @@ export default function TicketDetails() {
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-texto/80">Atribuído para</label>
-                  {canEdit ? (
-                    <UserSelect
-                      value={ticket.assignedTo || { id: null, username: "", role: "" }}
-                      onChange={(u) => saveField("assignedToId", u?.id || null)}
-                      placeholder="Selecione um usuário"
-                    />
-                  ) : (
-                    <div className="rounded-xl border border-borda bg-azul-claro/10 px-4 py-3 text-azul-claro font-medium">
-                      {ticket.assignedTo?.username || "—"}
-                    </div>
-                  )}
+                  <label className="mb-2 block text-sm font-medium text-texto/80">Atribuir para</label>
+                  <MultiUserSelect
+                    label="Atribuir para"
+                    value={(() => {
+                      const list = [];
+                      if (ticket.assignedTo) list.push(ticket.assignedTo);
+                      for (const a of (ticket.assignees || [])) {
+                        if (!list.find((u) => u.id === a.userId) && a.user) list.push(a.user);
+                      }
+                      return list;
+                    })()}
+                    onChange={(list) => {
+                      // Admin/Criador: podem mudar principal e substituir adicionais
+                      if (canEditFull && isEditing) {
+                        const first = (list && list[0]) ? list[0].id : null;
+                        const rest = (list || []).slice(1).map(u => u.id).filter(Boolean);
+                        saveFields({ assignedToId: first, assignedUserIds: rest });
+                        return;
+                      }
+                      // Atribuídos (sem full): apenas adicionar novos (sem remover ou reordenar)
+                      const currentIds = [
+                        ...(ticket.assignedTo ? [ticket.assignedTo.id] : []),
+                        ...((ticket.assignees || []).map(a => a.userId))
+                      ];
+                      const proposed = (list || []).map(u => u.id).filter(Boolean);
+                      const toAdd = proposed.filter(id => !currentIds.includes(id));
+                      if (toAdd.length) {
+                        saveFields({ assignedUserIds: [...new Set([...(ticket.assignees || []).map(a => a.userId), ...toAdd])] });
+                      }
+                    }}
+                    disabled={!isEditing}
+                  />
                 </div>
 
 
@@ -593,6 +736,33 @@ export default function TicketDetails() {
           </section>
         </>
       )}
+      <DeleteTicketModal
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={confirmDelete}
+        loading={deleteLoading}
+        error={deleteError}
+      />
     </AppLayout>
+  );
+}
+
+// Modal simples de confirmação de exclusão
+// Colocado no final do arquivo para manter a função principal limpa
+export function DeleteTicketModal({ open, onClose, onConfirm, loading, error }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative bg-fundo border border-borda rounded-2xl shadow-2xl w-full max-w-md p-5">
+        <h3 className="text-lg font-semibold text-titulo mb-2">Excluir ticket</h3>
+        <p className="text-texto/80 mb-4">Tem certeza que deseja excluir este ticket? Esta ação não pode ser desfeita.</p>
+        {error && <div className="mb-3 text-sm text-red-400">{error}</div>}
+        <div className="flex items-center justify-end gap-2">
+          <button onClick={onClose} disabled={loading} className="px-4 py-2 rounded-xl border border-borda text-texto hover:bg-slate-600/30 disabled:opacity-50">Cancelar</button>
+          <button onClick={onConfirm} disabled={loading} className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white disabled:opacity-50">{loading ? 'Excluindo...' : 'Excluir'}</button>
+        </div>
+      </div>
+    </div>
   );
 }
