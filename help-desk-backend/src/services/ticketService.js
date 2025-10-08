@@ -169,42 +169,47 @@ export const ticketService = {
       delete data.assignedUserIds;
     }
 
-    const updated = await prisma.ticket.update({
-      where: { id },
-      data,
-      include: {
-        createdBy: true,
-        assignedTo: true,
-        assignees: { include: { user: true } },
-      },
+    const final = await prisma.$transaction(async (tx) => {
+      // 1) Atualiza dados principais
+      const updated = await tx.ticket.update({
+        where: { id },
+        data,
+        include: {
+          createdBy: true,
+          assignedTo: true,
+          assignees: true, // inclui sem user aqui para operações; recarregamos depois
+        },
+      });
+
+      // 2) Admin/Criador: substituir conjunto de atribuídos adicionais
+      if (assignedUserIds && (isAdmin || isCreator)) {
+        const target = assignedUserIds.filter((uid) => uid !== updated.assignedToId);
+        await tx.ticketAssignment.deleteMany({ where: { ticketId: id, userId: { notIn: target } } });
+        if (target.length) {
+          await tx.ticketAssignment.createMany({ data: target.map((uid) => ({ ticketId: id, userId: uid })), skipDuplicates: true });
+        } else {
+          await tx.ticketAssignment.deleteMany({ where: { ticketId: id } });
+        }
+      }
+
+      // 3) Atribuído: pode apenas adicionar usuários extras (sem remover)
+      if (!isAdmin && !isCreator && isAssigned && Array.isArray(originalAssignedUserIds)) {
+        const desired = Array.from(new Set(originalAssignedUserIds.filter(Boolean)));
+        const currentSet = new Set(updated.assignees.map(a => a.userId));
+        const toAdd = desired.filter(uid => uid !== updated.assignedToId && !currentSet.has(uid));
+        if (toAdd.length) {
+          await tx.ticketAssignment.createMany({ data: toAdd.map(uid => ({ ticketId: id, userId: uid })), skipDuplicates: true });
+        }
+      }
+
+      // 4) Recarrega com relacionamentos completos
+      return tx.ticket.findUnique({
+        where: { id },
+        include: { createdBy: true, assignedTo: true, assignees: { include: { user: true } } },
+      });
     });
 
-    if (assignedUserIds && (isAdmin || isCreator)) {
-      // Replace assignments set with provided list excluding primary assignedToId
-      const target = assignedUserIds.filter((uid) => uid !== updated.assignedToId);
-      // Remove não listados
-      await prisma.ticketAssignment.deleteMany({ where: { ticketId: id, userId: { notIn: target } } });
-      // Add os faltantes
-      if (target.length) {
-        await prisma.ticketAssignment.createMany({ data: target.map((uid) => ({ ticketId: id, userId: uid })), skipDuplicates: true });
-      } else {
-        // se vazio, limpa todos
-        await prisma.ticketAssignment.deleteMany({ where: { ticketId: id } });
-      }
-    }
-
-    // Atribuídos podem adicionar pessoas (apenas add, sem remover), e não podem alterar o principal
-    if (!isAdmin && !isCreator && isAssigned && Array.isArray(originalAssignedUserIds)) {
-      const desired = Array.from(new Set(originalAssignedUserIds.filter(Boolean)));
-      const currentSet = new Set(updated.assignees.map(a => a.userId));
-      const toAdd = desired.filter(uid => uid !== updated.assignedToId && !currentSet.has(uid));
-      if (toAdd.length) {
-        await prisma.ticketAssignment.createMany({ data: toAdd.map(uid => ({ ticketId: id, userId: uid })), skipDuplicates: true });
-      }
-      // Não removemos ninguém se estiver faltando; e ignoramos tentativas de mudar assignedToId porque não veio neste fluxo
-    }
-
-    return updated;
+    return final;
   },
 
   remove: async (id, userId, _userRole) => {

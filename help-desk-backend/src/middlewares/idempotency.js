@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import { prisma } from '../db.js';
 import { verifyAccessToken } from '../utils/jwt.js';
 
-const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+const IDEMP_METHODS = (process.env.IDEMP_METHODS || 'POST').split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
 const TTL_SECONDS = 10 * 60; // 10 minutos
 
 function stableStringify(value) {
@@ -23,7 +23,7 @@ function hashBody(body) {
 }
 
 export async function idempotencyMiddleware(req, res, next) {
-  if (!MUTATING.has(req.method)) return next();
+  if (!IDEMP_METHODS.includes(req.method)) return next();
 
   const providedKey = req.header('Idempotency-Key');
   let scope;
@@ -72,13 +72,13 @@ export async function idempotencyMiddleware(req, res, next) {
       return;
     }
 
-    // Tenta reclamar a chave (create). Se houver conflito, responde conforme existente.
-    try {
-      await prisma.idempotencyRecord.create({
-        data: { key, scope, method, path, bodyHash, expiresAt },
-      });
-    } catch (err) {
-      // Conflito de unicidade
+    // Tenta reclamar a chave de modo "idempotente" evitando erros de unicidade visíveis
+    const result = await prisma.idempotencyRecord.createMany({
+      data: [{ key, scope, method, path, bodyHash, expiresAt }],
+      skipDuplicates: true,
+    });
+    if (!result || result.count === 0) {
+      // Já existia; verificar estado atual
       const dup = await prisma.idempotencyRecord.findUnique({ where: { key_scope: { key, scope } } });
       if (dup && dup.expiresAt > now) {
         if (dup.status != null && dup.response != null) {
@@ -88,7 +88,7 @@ export async function idempotencyMiddleware(req, res, next) {
         res.status(409).json({ message: 'Duplicate request in progress' });
         return;
       }
-      // Senão, segue o fluxo
+      // Se expirado/não encontrado, seguimos o fluxo e tentamos processar normalmente
     }
 
     // Envolve res.json para gravar a resposta

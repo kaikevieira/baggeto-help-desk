@@ -1,9 +1,9 @@
 // Rate limiter simples em memória (adequado para 1 instância)
 // Para produção horizontal, mover para Redis.
 
-const WINDOW_MS = 60 * 1000; // 1 min
-const LIMIT_GENERAL = 120; // por janela
-const LIMIT_MUTATING = 30; // POST/PUT/PATCH/DELETE
+const WINDOW_MS = Number(process.env.RL_WINDOW_MS || 60_000); // default 1 min
+const LIMIT_GENERAL = Number(process.env.RL_LIMIT_GENERAL || 300); // default 300/min
+const LIMIT_MUTATING = Number(process.env.RL_LIMIT_MUTATING || 90); // default 90/min
 
 const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
@@ -23,9 +23,20 @@ export function rateLimitMiddleware(req, res, next) {
   // Exclui SSE de notificações para não bloquear stream
   if (req.path.startsWith('/notifications/stream')) return next();
 
+  // Rotas com maior frequência aceitável (listagens e pequenos updates)
+  const isTicketsGet = req.method === 'GET' && req.path.startsWith('/tickets');
+  const isTicketsPut = req.method === 'PUT' && req.path.startsWith('/tickets/');
+
   const id = req.user?.sub ? `user:${req.user.sub}` : (req.ip ? `ip:${req.ip}` : 'anon');
   const mutating = MUTATING.has(req.method);
-  const limit = mutating ? LIMIT_MUTATING : LIMIT_GENERAL;
+  let limit = mutating ? LIMIT_MUTATING : LIMIT_GENERAL;
+  if (isTicketsGet) {
+    // Mais folgado para listas/polling
+    limit = Number(process.env.RL_LIMIT_TICKETS_GET || Math.max(LIMIT_GENERAL, 600));
+  } else if (isTicketsPut) {
+    // PUT frequente na edição (route/atribuições) — permitir mais
+    limit = Number(process.env.RL_LIMIT_TICKETS_PUT || Math.max(LIMIT_MUTATING, 180));
+  }
 
   const b = bucketFor(id);
   b.count += 1;

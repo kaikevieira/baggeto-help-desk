@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { addComment, getTicket, listComments, updateTicket, deleteTicket } from "../api/tickets";
 import UserSelect from "../components/UserSelect";
@@ -17,6 +17,8 @@ export default function TicketDetails() {
   const { id } = useParams();
   const { user } = useAuth();
   const [ticket, setTicket] = useState(null);
+  // rascunho local para modo de edição (todas as alterações só são salvas ao clicar em "Salvar")
+  const [draft, setDraft] = useState(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState("");
@@ -33,6 +35,8 @@ export default function TicketDetails() {
   const [newComment, setNewComment] = useState("");
   const [error, setError] = useState("");
   const [isEditing, setIsEditing] = useState(false);
+  // ids iniciais de atribuições para impedir remoção por usuários não autorizados
+  const initialAssignedIdsRef = useRef([]);
 
   useEffect(() => { load(); }, [id]);
 
@@ -52,6 +56,8 @@ export default function TicketDetails() {
 
   useEffect(() => {
     // sincroniza máscara de frete com dados do ticket
+    // quando NÃO estiver editando, exibe com base no ticket
+    if (isEditing) return;
     const val = ticket?.freightValue;
     if (val == null || val === "") {
       setFreightDisplay("");
@@ -65,29 +71,118 @@ export default function TicketDetails() {
     }
   }, [ticket?.freightValue]);
 
-  async function saveField(field, value) {
-    setSaving(true);
-    try {
-      const payload =
-        field === "cargoWeight" || field === "thirdPartyPayment"
-          ? { [field]: value === "" || value == null ? null : Number(value) }
-          : { [field]: value };
-      const key = `ticket-update:${id}:${field}:${Date.now()}`;
-      const updated = await updateTicket(id, payload, { idempotencyKey: key });
-      setTicket(updated);
-    } catch (e) {
-      setError(e?.message || "Erro ao salvar");
-    } finally {
-      setSaving(false);
+  // helpers de atribuição
+  function buildAssignedListFromTicket(t) {
+    const list = [];
+    if (t?.assignedTo) list.push(t.assignedTo);
+    for (const a of (t?.assignees || [])) {
+      if (!list.find((u) => u.id === a.userId) && a.user) list.push(a.user);
     }
+    return list;
   }
 
-  async function saveFields(payload) {
+  function startEdit() {
+    if (!ticket) return;
+    // construir rascunho completo
+    const d = {
+      // transporte / rota
+      originCity: ticket.originCity || "",
+      originUF: ticket.originUF || "",
+      originIBGEId: ticket.originIBGEId ?? null,
+      destinationCity: ticket.destinationCity || "",
+      destinationUF: ticket.destinationUF || "",
+      destinationIBGEId: ticket.destinationIBGEId ?? null,
+      route: ticket.route || "",
+      // frete
+      freightBasis: ticket.freightBasis || "FULL",
+      incoterm: ticket.incoterm || "CIF",
+      serviceTaker: ticket.serviceTaker || "",
+      // descrição
+      description: ticket.description || "",
+      // financeiros
+      freightValue: ticket.freightValue == null ? null : Number(ticket.freightValue),
+      paymentTerm: ticket.paymentTerm || "",
+      paymentType: ticket.paymentType || "",
+      // carga
+      cargoWeight: ticket.cargoWeight == null ? null : Number(ticket.cargoWeight),
+      billingCompany: ticket.billingCompany || "",
+      // veículos
+      plateCavalo: ticket.plateCavalo || "",
+      plateCarreta1: ticket.plateCarreta1 || "",
+      plateCarreta2: ticket.plateCarreta2 || "",
+      plateCarreta3: ticket.plateCarreta3 || "",
+      // frota/terceiros
+      fleetType: ticket.fleetType || "FROTA",
+      thirdPartyPayment: ticket.thirdPartyPayment == null ? null : Number(ticket.thirdPartyPayment),
+      // pedagio/representantes
+      hasToll: ticket.hasToll || "",
+      cteRepresentative: ticket.cteRepresentative || "",
+      manifestRepresentative: ticket.manifestRepresentative || "",
+      // operacional
+      status: ticket.status,
+      priority: ticket.priority,
+      // atribuições (lista de objetos usuário para o componente)
+      assignedList: buildAssignedListFromTicket(ticket),
+    };
+    // máscara inicial do frete
+    if (d.freightValue == null) {
+      setFreightDisplay("");
+      setFreightNumber(null);
+    } else {
+      setFreightNumber(d.freightValue);
+      setFreightDisplay(d.freightValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }));
+    }
+    // ids iniciais para política de "somente adicionar" para atribuídos
+    initialAssignedIdsRef.current = buildAssignedListFromTicket(ticket).map(u => u.id);
+    setDraft(d);
+    setIsEditing(true);
+  }
+
+  async function saveDraft() {
+    if (!draft || !ticket) { setIsEditing(false); return; }
+    // monta payload apenas com diferenças
+    const fields = [
+      'originCity','originUF','originIBGEId','destinationCity','destinationUF','destinationIBGEId','route',
+      'freightBasis','incoterm','serviceTaker','description','freightValue','paymentTerm','paymentType',
+      'cargoWeight','billingCompany','plateCavalo','plateCarreta1','plateCarreta2','plateCarreta3',
+      'fleetType','thirdPartyPayment','hasToll','cteRepresentative','manifestRepresentative','status','priority'
+    ];
+    const payload = {};
+    for (const key of fields) {
+      const prevVal = ticket[key] ?? (key === 'hasToll' ? '' : null);
+      const nextVal = draft[key];
+      // normalizar números que podem ser string/number
+      const norm = v => (v === '' ? '' : (v == null ? null : v));
+      if (JSON.stringify(norm(prevVal)) !== JSON.stringify(norm(nextVal))) {
+        payload[key] = nextVal === '' ? '' : nextVal;
+      }
+    }
+    // atribuições
+    const currentFirst = ticket.assignedTo ? ticket.assignedTo.id : null;
+    const currentRestSet = new Set((ticket.assignees || []).map(a => a.userId));
+    const proposedFirst = (draft.assignedList && draft.assignedList[0]) ? draft.assignedList[0].id : null;
+    const proposedRest = (draft.assignedList || []).slice(1).map(u => u.id);
+    const sameFirst = currentFirst === proposedFirst;
+    const sameRest = proposedRest.length === currentRestSet.size && proposedRest.every(id => currentRestSet.has(id));
+    if (!sameFirst || !sameRest) {
+      payload.assignedToId = proposedFirst;
+      payload.assignedUserIds = proposedRest;
+    }
+
+    if (Object.keys(payload).length === 0) {
+      // nada mudou
+      setIsEditing(false);
+      setDraft(null);
+      return;
+    }
+
     setSaving(true);
     try {
-      const key = `ticket-update:${id}:${Object.keys(payload).join(',')}:${Date.now()}`;
+      const key = `ticket-save-draft:${id}:${Date.now()}`;
       const updated = await updateTicket(id, payload, { idempotencyKey: key });
       setTicket(updated);
+      setIsEditing(false);
+      setDraft(null);
     } catch (e) {
       setError(e?.message || "Erro ao salvar");
     } finally {
@@ -140,7 +235,13 @@ export default function TicketDetails() {
   const canEditOperational = !!(isAdmin || isCreator || isAssigned);
   
   function toggleEdit() {
-    if (canEditOperational) setIsEditing(!isEditing);
+    if (!canEditOperational) return;
+    if (!isEditing) {
+      startEdit();
+    } else {
+      // salvar alterações
+      saveDraft();
+    }
   }
 
   function getPriorityColor(priority) {
@@ -202,7 +303,12 @@ export default function TicketDetails() {
                     onClick={toggleEdit} 
                     className={`px-2 sm:px-4 py-2 min-w-[70px] sm:min-w-[100px] text-xs sm:text-sm ${isEditing ? 'bg-green-600 hover:bg-green-700' : 'bg-azul-claro hover:bg-azul-claro/80'}`}
                   >
-                    {isEditing ? '💾 Salvar' : '✏️ Editar'}
+                    {isEditing ? (saving ? 'Salvando...' : '💾 Salvar') : '✏️ Editar'}
+                  </Button>
+                )}
+                {isEditing && (
+                  <Button onClick={() => { setIsEditing(false); setDraft(null); }} className="bg-gray-600 hover:bg-gray-700 px-2 sm:px-4 py-2 min-w-[70px] sm:min-w-[100px] text-xs sm:text-sm">
+                    Cancelar
                   </Button>
                 )}
                 {isCreator && (
@@ -244,8 +350,8 @@ export default function TicketDetails() {
                       <label className="mb-2 block text-sm font-medium text-texto/80">Origem</label>
                       {isEditing && canEditFull ? (
                         <CityUFInput
-                          value={{ city: ticket.originCity || "", uf: ticket.originUF || "", ibgeId: ticket.originIBGEId || undefined }}
-                          onChange={(v) => saveFields({ originCity: v.city, originUF: v.uf, originIBGEId: v.ibgeId })}
+                          value={{ city: draft?.originCity || "", uf: draft?.originUF || "", ibgeId: draft?.originIBGEId || undefined }}
+                          onChange={(v) => setDraft((d) => ({ ...d, originCity: v.city, originUF: v.uf, originIBGEId: v.ibgeId }))}
                         />
                       ) : (
                         <div className="rounded-xl border border-borda bg-fundo/50 px-3 sm:px-4 py-3 text-texto font-medium truncate">
@@ -257,8 +363,8 @@ export default function TicketDetails() {
                       <label className="mb-2 block text-sm font-medium text-texto/80">Destino</label>
                       {isEditing && canEditFull ? (
                         <CityUFInput
-                          value={{ city: ticket.destinationCity || "", uf: ticket.destinationUF || "", ibgeId: ticket.destinationIBGEId || undefined }}
-                          onChange={(v) => saveFields({ destinationCity: v.city, destinationUF: v.uf, destinationIBGEId: v.ibgeId })}
+                          value={{ city: draft?.destinationCity || "", uf: draft?.destinationUF || "", ibgeId: draft?.destinationIBGEId || undefined }}
+                          onChange={(v) => setDraft((d) => ({ ...d, destinationCity: v.city, destinationUF: v.uf, destinationIBGEId: v.ibgeId }))}
                         />
                       ) : (
                         <div className="rounded-xl border border-borda bg-fundo/50 px-3 sm:px-4 py-3 text-texto font-medium truncate">
@@ -272,10 +378,10 @@ export default function TicketDetails() {
                   <div className="mt-4">
                     {isEditing && canEditFull ? (
                       <RouteSelector
-                        value={ticket.route || ""}
-                        onChange={(val) => saveField("route", val || "")}
-                        startUF={ticket.originUF || ""}
-                        endUF={ticket.destinationUF || ""}
+                        value={draft?.route || ""}
+                        onChange={(val) => setDraft((d) => ({ ...d, route: val || "" }))}
+                        startUF={draft?.originUF || ticket.originUF || ""}
+                        endUF={draft?.destinationUF || ticket.destinationUF || ""}
                       />
                     ) : (
                       <>
@@ -301,8 +407,8 @@ export default function TicketDetails() {
                       className={`w-full min-w-0 rounded-xl border border-borda px-3 sm:px-4 py-3 text-texto transition-all ${
                         isEditing && canEditFull ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
                       }`}
-                      value={ticket.freightBasis || "FULL"}
-                      onChange={(e) => isEditing && canEditFull && saveField("freightBasis", e.target.value)}
+                      value={isEditing ? (draft?.freightBasis || "FULL") : (ticket.freightBasis || "FULL")}
+                      onChange={(e) => isEditing && canEditFull && setDraft((d) => ({ ...d, freightBasis: e.target.value }))}
                       disabled={!(isEditing && canEditFull)}
                     >
                       <option value="FULL">Frete Cheio</option>
@@ -316,8 +422,8 @@ export default function TicketDetails() {
                       className={`w-full min-w-0 rounded-xl border border-borda px-3 sm:px-4 py-3 text-texto transition-all ${
                         isEditing && canEditFull ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
                       }`}
-                      value={ticket.incoterm || "CIF"}
-                      onChange={(e) => isEditing && canEditFull && saveField("incoterm", e.target.value)}
+                      value={isEditing ? (draft?.incoterm || "CIF") : (ticket.incoterm || "CIF")}
+                      onChange={(e) => isEditing && canEditFull && setDraft((d) => ({ ...d, incoterm: e.target.value }))}
                       disabled={!(isEditing && canEditFull)}
                     >
                       <option value="CIF">CIF</option>
@@ -330,8 +436,8 @@ export default function TicketDetails() {
                         className={`w-full rounded-xl border border-borda px-4 py-3 text-texto transition-all ${
                           isEditing && canEditFull ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
                         }`}
-                        defaultValue={ticket.serviceTaker || ""}
-                        onBlur={(e) => isEditing && canEditFull && saveField("serviceTaker", e.target.value)}
+                        value={isEditing ? (draft?.serviceTaker ?? "") : (ticket.serviceTaker ?? "")}
+                        onChange={(e) => isEditing && canEditFull && setDraft((d) => ({ ...d, serviceTaker: e.target.value }))}
                         disabled={!(isEditing && canEditFull)}
                         placeholder="Nome do tomador"
                       />
@@ -348,8 +454,8 @@ export default function TicketDetails() {
                       <textarea
                         className="w-full min-w-0 bg-transparent border-none resize-none focus:outline-none text-texto"
                         rows={4}
-                        defaultValue={ticket.description}
-                        onBlur={(e) => saveField("description", e.target.value)}
+                        value={draft?.description ?? ""}
+                        onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
                       />
                     ) : (
                       <p className="text-texto whitespace-pre-wrap break-words">{ticket.description}</p>
@@ -375,13 +481,14 @@ export default function TicketDetails() {
                           if (!digits) {
                             setFreightDisplay("");
                             setFreightNumber(null);
+                            if (isEditing) setDraft((d) => ({ ...d, freightValue: null }));
                           } else {
                             const number = parseInt(digits, 10) / 100;
                             setFreightNumber(number);
                             setFreightDisplay(number.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }));
+                            if (isEditing) setDraft((d) => ({ ...d, freightValue: number }));
                           }
                         }}
-                        onBlur={() => isEditing && canEditFull && saveField("freightValue", freightNumber)}
                         disabled={!(isEditing && canEditFull)}
                         placeholder="R$ 0,00"
                       />
@@ -392,8 +499,8 @@ export default function TicketDetails() {
                         className={`w-full rounded-xl border border-borda px-4 py-3 text-texto transition-all ${
                           isEditing && canEditFull ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
                         }`}
-                        defaultValue={ticket.paymentTerm || ""}
-                        onBlur={(e) => isEditing && canEditFull && saveField("paymentTerm", e.target.value)}
+                        value={isEditing ? (draft?.paymentTerm ?? "") : (ticket.paymentTerm ?? "")}
+                        onChange={(e) => isEditing && canEditFull && setDraft((d) => ({ ...d, paymentTerm: e.target.value }))}
                         disabled={!(isEditing && canEditFull)}
                         placeholder="Ex: à vista, 15 dias, 30 dias"
                       />
@@ -404,8 +511,8 @@ export default function TicketDetails() {
                         className={`w-full rounded-xl border border-borda px-4 py-3 text-texto transition-all ${
                           isEditing && canEditFull ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
                         }`}
-                        defaultValue={ticket.paymentType || ""}
-                        onBlur={(e) => isEditing && canEditFull && saveField("paymentType", e.target.value)}
+                        value={isEditing ? (draft?.paymentType ?? "") : (ticket.paymentType ?? "")}
+                        onChange={(e) => isEditing && canEditFull && setDraft((d) => ({ ...d, paymentType: e.target.value }))}
                         disabled={!(isEditing && canEditFull)}
                         placeholder="Ex: PIX, Boleto, TED"
                       />
@@ -428,8 +535,8 @@ export default function TicketDetails() {
                         className={`w-full rounded-xl border border-borda px-4 py-3 text-texto transition-all ${
                           isEditing && canEditFull ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
                         }`}
-                        defaultValue={ticket.cargoWeight ?? ""}
-                        onBlur={(e) => isEditing && canEditFull && saveField("cargoWeight", e.target.value)}
+                        value={isEditing ? (draft?.cargoWeight ?? "") : (ticket.cargoWeight ?? "")}
+                        onChange={(e) => isEditing && canEditFull && setDraft((d) => ({ ...d, cargoWeight: e.target.value === '' ? null : Number(e.target.value) }))}
                         disabled={!(isEditing && canEditFull)}
                         placeholder="Ex: 28.500"
                       />
@@ -440,8 +547,8 @@ export default function TicketDetails() {
                         className={`w-full rounded-xl border border-borda px-4 py-3 text-texto transition-all ${
                           isEditing && canEditFull ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
                         }`}
-                        defaultValue={ticket.billingCompany || ""}
-                        onBlur={(e) => isEditing && canEditFull && saveField("billingCompany", e.target.value)}
+                        value={isEditing ? (draft?.billingCompany ?? "") : (ticket.billingCompany ?? "")}
+                        onChange={(e) => isEditing && canEditFull && setDraft((d) => ({ ...d, billingCompany: e.target.value }))}
                         disabled={!(isEditing && canEditFull)}
                         placeholder="Nome da empresa"
                       />
@@ -461,8 +568,8 @@ export default function TicketDetails() {
                         className={`w-full rounded-xl border border-borda px-4 py-3 text-texto transition-all font-mono uppercase tracking-wider ${
                           isEditing && canEditFull ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
                         }`}
-                        defaultValue={ticket.plateCavalo || ""}
-                        onBlur={(e) => isEditing && canEditFull && saveField("plateCavalo", e.target.value.toUpperCase())}
+                        value={isEditing ? (draft?.plateCavalo ?? "") : (ticket.plateCavalo ?? "")}
+                        onChange={(e) => isEditing && canEditFull && setDraft((d) => ({ ...d, plateCavalo: e.target.value.toUpperCase() }))}
                         disabled={!(isEditing && canEditFull)}
                         placeholder="Ex: ABC1234"
                       />
@@ -473,8 +580,8 @@ export default function TicketDetails() {
                         className={`w-full rounded-xl border border-borda px-4 py-3 text-texto transition-all font-mono uppercase tracking-wider ${
                           isEditing && canEditFull ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
                         }`}
-                        defaultValue={ticket.plateCarreta1 || ""}
-                        onBlur={(e) => isEditing && canEditFull && saveField("plateCarreta1", e.target.value.toUpperCase())}
+                        value={isEditing ? (draft?.plateCarreta1 ?? "") : (ticket.plateCarreta1 ?? "")}
+                        onChange={(e) => isEditing && canEditFull && setDraft((d) => ({ ...d, plateCarreta1: e.target.value.toUpperCase() }))}
                         disabled={!(isEditing && canEditFull)}
                         placeholder="Ex: ABC1234"
                       />
@@ -485,8 +592,8 @@ export default function TicketDetails() {
                         className={`w-full rounded-xl border border-borda px-4 py-3 text-texto transition-all font-mono uppercase tracking-wider ${
                           isEditing && canEditFull ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
                         }`}
-                        defaultValue={ticket.plateCarreta2 || ""}
-                        onBlur={(e) => isEditing && canEditFull && saveField("plateCarreta2", e.target.value.toUpperCase())}
+                        value={isEditing ? (draft?.plateCarreta2 ?? "") : (ticket.plateCarreta2 ?? "")}
+                        onChange={(e) => isEditing && canEditFull && setDraft((d) => ({ ...d, plateCarreta2: e.target.value.toUpperCase() }))}
                         disabled={!(isEditing && canEditFull)}
                         placeholder="Ex: ABC1234"
                       />
@@ -497,8 +604,8 @@ export default function TicketDetails() {
                         className={`w-full rounded-xl border border-borda px-4 py-3 text-texto transition-all font-mono uppercase tracking-wider ${
                           isEditing && canEditFull ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
                         }`}
-                        defaultValue={ticket.plateCarreta3 || ""}
-                        onBlur={(e) => isEditing && canEditFull && saveField("plateCarreta3", e.target.value.toUpperCase())}
+                        value={isEditing ? (draft?.plateCarreta3 ?? "") : (ticket.plateCarreta3 ?? "")}
+                        onChange={(e) => isEditing && canEditFull && setDraft((d) => ({ ...d, plateCarreta3: e.target.value.toUpperCase() }))}
                         disabled={!(isEditing && canEditFull)}
                         placeholder="Ex: ABC1234"
                       />
@@ -518,15 +625,15 @@ export default function TicketDetails() {
                         className={`w-full rounded-xl border border-borda px-4 py-3 text-texto transition-all ${
                           isEditing && canEditFull ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
                         }`}
-                        value={ticket.fleetType || "FROTA"}
-                        onChange={(e) => isEditing && canEditFull && saveField("fleetType", e.target.value)}
+                        value={isEditing ? (draft?.fleetType || "FROTA") : (ticket.fleetType || "FROTA")}
+                        onChange={(e) => isEditing && canEditFull && setDraft((d) => ({ ...d, fleetType: e.target.value }))}
                         disabled={!(isEditing && canEditFull)}
                       >
                         <option value="FROTA">Frota</option>
                         <option value="TERCEIRO">Terceiro</option>
                       </select>
                     </div>
-                    {ticket.fleetType === "TERCEIRO" && (
+                    {(isEditing ? draft?.fleetType : ticket.fleetType) === "TERCEIRO" && (
                       <div>
                         <label className="mb-2 block text-sm font-medium text-texto/80">Valor p/ terceiro (R$)</label>
                         <input
@@ -536,8 +643,8 @@ export default function TicketDetails() {
                           className={`w-full rounded-xl border border-borda px-4 py-3 text-texto transition-all ${
                             isEditing && canEditFull ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
                           }`}
-                          defaultValue={ticket.thirdPartyPayment ?? ""}
-                          onBlur={(e) => isEditing && canEditFull && saveField("thirdPartyPayment", e.target.value)}
+                          value={isEditing ? (draft?.thirdPartyPayment ?? "") : (ticket.thirdPartyPayment ?? "")}
+                          onChange={(e) => isEditing && canEditFull && setDraft((d) => ({ ...d, thirdPartyPayment: e.target.value === '' ? null : Number(e.target.value) }))}
                           disabled={!(isEditing && canEditFull)}
                           placeholder="0,00"
                         />
@@ -553,8 +660,8 @@ export default function TicketDetails() {
                       className={`w-full rounded-xl border border-borda px-4 py-3 text-texto transition-all ${
                         isEditing && canEditFull ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
                       }`}
-                      value={ticket.hasToll || ""}
-                      onChange={(e) => isEditing && canEditFull && saveField("hasToll", e.target.value || null)}
+                      value={isEditing ? (draft?.hasToll ?? "") : (ticket.hasToll ?? "")}
+                      onChange={(e) => isEditing && canEditFull && setDraft((d) => ({ ...d, hasToll: e.target.value }))}
                       disabled={!(isEditing && canEditFull)}
                     >
                       <option value="">Não especificado</option>
@@ -570,8 +677,8 @@ export default function TicketDetails() {
                       className={`w-full rounded-xl border border-borda px-4 py-3 text-texto transition-all ${
                         isEditing && canEditFull ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
                       }`}
-                      defaultValue={ticket.cteRepresentative || ""}
-                      onBlur={(e) => isEditing && canEditFull && saveField("cteRepresentative", e.target.value)}
+                      value={isEditing ? (draft?.cteRepresentative ?? "") : (ticket.cteRepresentative ?? "")}
+                      onChange={(e) => isEditing && canEditFull && setDraft((d) => ({ ...d, cteRepresentative: e.target.value }))}
                       disabled={!(isEditing && canEditFull)}
                       placeholder="Nome do representante"
                     />
@@ -583,8 +690,8 @@ export default function TicketDetails() {
                       className={`w-full rounded-xl border border-borda px-4 py-3 text-texto transition-all ${
                         isEditing && canEditFull ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
                       }`}
-                      defaultValue={ticket.manifestRepresentative || ""}
-                      onBlur={(e) => isEditing && canEditFull && saveField("manifestRepresentative", e.target.value)}
+                      value={isEditing ? (draft?.manifestRepresentative ?? "") : (ticket.manifestRepresentative ?? "")}
+                      onChange={(e) => isEditing && canEditFull && setDraft((d) => ({ ...d, manifestRepresentative: e.target.value }))}
                       disabled={!(isEditing && canEditFull)}
                       placeholder="Nome do representante"
                     />
@@ -617,8 +724,8 @@ export default function TicketDetails() {
                     className={`w-full rounded-xl border border-borda px-4 py-3 text-texto transition-all ${
                       isEditing && canEditOperational ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
                     }`}
-                    value={ticket.status}
-                    onChange={(e) => isEditing && canEditOperational && saveField("status", e.target.value)}
+                    value={isEditing ? (draft?.status ?? ticket.status) : ticket.status}
+                    onChange={(e) => isEditing && canEditOperational && setDraft((d) => ({ ...d, status: e.target.value }))}
                     disabled={!(isEditing && canEditOperational)}
                   >
                     <option value="OPEN">Aberto</option>
@@ -634,8 +741,8 @@ export default function TicketDetails() {
                     className={`w-full rounded-xl border border-borda px-4 py-3 text-texto transition-all ${
                       isEditing && canEditOperational ? 'bg-transparent hover:border-azul-claro/50 focus:border-azul-claro focus:ring-2 focus:ring-azul-claro/20' : 'bg-gray-500/10 cursor-not-allowed'
                     }`}
-                    value={ticket.priority}
-                    onChange={(e) => isEditing && canEditOperational && saveField("priority", e.target.value)}
+                    value={isEditing ? (draft?.priority ?? ticket.priority) : ticket.priority}
+                    onChange={(e) => isEditing && canEditOperational && setDraft((d) => ({ ...d, priority: e.target.value }))}
                     disabled={!(isEditing && canEditOperational)}
                   >
                     <option value="LOW">Baixa</option>
@@ -649,32 +756,22 @@ export default function TicketDetails() {
                   <label className="mb-2 block text-sm font-medium text-texto/80">Atribuir para</label>
                   <MultiUserSelect
                     label="Atribuir para"
-                    value={(() => {
-                      const list = [];
-                      if (ticket.assignedTo) list.push(ticket.assignedTo);
-                      for (const a of (ticket.assignees || [])) {
-                        if (!list.find((u) => u.id === a.userId) && a.user) list.push(a.user);
-                      }
-                      return list;
-                    })()}
+                    value={isEditing ? (draft?.assignedList || []) : buildAssignedListFromTicket(ticket)}
                     onChange={(list) => {
-                      // Admin/Criador: podem mudar principal e substituir adicionais
-                      if (canEditFull && isEditing) {
-                        const first = (list && list[0]) ? list[0].id : null;
-                        const rest = (list || []).slice(1).map(u => u.id).filter(Boolean);
-                        saveFields({ assignedToId: first, assignedUserIds: rest });
+                      if (!isEditing) return;
+                      // Admin/Criador: total controle no rascunho
+                      if (canEditFull) {
+                        setDraft((d) => ({ ...d, assignedList: list || [] }));
                         return;
                       }
-                      // Atribuídos (sem full): apenas adicionar novos (sem remover ou reordenar)
-                      const currentIds = [
-                        ...(ticket.assignedTo ? [ticket.assignedTo.id] : []),
-                        ...((ticket.assignees || []).map(a => a.userId))
-                      ];
-                      const proposed = (list || []).map(u => u.id).filter(Boolean);
-                      const toAdd = proposed.filter(id => !currentIds.includes(id));
-                      if (toAdd.length) {
-                        saveFields({ assignedUserIds: [...new Set([...(ticket.assignees || []).map(a => a.userId), ...toAdd])] });
-                      }
+                      // Atribuídos: somente adicionar (não remover os iniciais)
+                      const proposedIds = (list || []).map(u => u.id).filter(Boolean);
+                      const unionIds = Array.from(new Set([ ...initialAssignedIdsRef.current, ...proposedIds ]));
+                      // reconstruir objetos usando os disponíveis (lista proposta + atual do rascunho)
+                      const currentMap = new Map([...(draft?.assignedList || []).map(u => [u.id, u])]);
+                      for (const u of (list || [])) currentMap.set(u.id, u);
+                      const rebuilt = unionIds.map(id => currentMap.get(id)).filter(Boolean);
+                      setDraft((d) => ({ ...d, assignedList: rebuilt }));
                     }}
                     disabled={!isEditing}
                   />

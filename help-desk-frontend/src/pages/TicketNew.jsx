@@ -316,7 +316,9 @@ export default function TicketNew() {
   assignedUserIds: (assignedList || []).slice(1).map(u => u.id).filter(Boolean),
       };
 
-  const t = await createTicket(payload);
+  // Idempotency-Key está habilitada para POST; gerar uma chave estável por conteúdo básico
+  const idemKey = `ticket-create:${user?.id || 'anon'}:${Date.now()}`;
+  const t = await createTicket(payload, { idempotencyKey: idemKey });
       navigate(`/tickets/${t.id}`, { replace: true });
     } catch (e) {
       setError(e?.message || "Erro ao criar chamado");
