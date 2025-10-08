@@ -7,6 +7,7 @@ import userRoutes from './routes/user.routes.js';
 import ticketRoutes from './routes/ticket.routes.js';
 import dashboardRoutes from './routes/dashboard.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
+import templateRoutes from './routes/template.routes.js';
 
 const app = express();
 
@@ -28,6 +29,7 @@ app.use('/users', userRoutes);
 app.use('/tickets', ticketRoutes);
 app.use('/dashboard', dashboardRoutes);
 app.use('/notifications', notificationRoutes);
+app.use('/templates', templateRoutes);
 
 // Error handler central
 app.use(errorHandler);
