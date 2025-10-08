@@ -2,21 +2,49 @@ import { prisma } from '../db.js';
 
 export const ticketService = {
   create: async (data) => {
-    // Gera um número único para o ticket começando do 100000
-    const count = await prisma.ticket.count();
-    const ticketNumber = String(100000 + count + 1);
-    
-    return prisma.ticket.create({
+    // Cria com um número temporário único para evitar colisões
+    const tmpNumber = `TMP-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+    const {
+      assignedUserIds,
+      ...rest
+    } = data;
+
+    const created = await prisma.ticket.create({
       data: {
-        status: data.status || 'OPEN',
-        ...data,
-        ticketNumber,
+        status: rest.status || 'OPEN',
+        ...rest,
+        ticketNumber: tmpNumber,
       },
       include: {
         createdBy: true,
         assignedTo: true,
       },
     });
+
+    // Define ticketNumber final baseado no ID (sempre único)
+    const finalNumber = String(100000 + created.id);
+    await prisma.ticket.update({
+      where: { id: created.id },
+      data: { ticketNumber: finalNumber },
+    });
+
+    if (Array.isArray(assignedUserIds) && assignedUserIds.length > 0) {
+      const distinct = Array.from(new Set(assignedUserIds.filter((id) => id && id !== created.assignedToId)));
+      if (distinct.length) {
+        await prisma.ticketAssignment.createMany({
+          data: distinct.map((userId) => ({ ticketId: created.id, userId })),
+          skipDuplicates: true,
+        });
+      }
+    }
+
+    // Recarrega incluindo assignees
+    const withAssignees = await prisma.ticket.findUnique({
+      where: { id: created.id },
+      include: { createdBy: true, assignedTo: true, assignees: { include: { user: true } } },
+    });
+    return withAssignees;
   },
 
   list: async ({ page = 1, pageSize = 10, status, q, userId, userRole }) => {
@@ -30,7 +58,8 @@ export const ticketService = {
       filters.push({
         OR: [
           { createdById: userId },
-          { assignedToId: userId }
+          { assignedToId: userId },
+          { assignees: { some: { userId } } }
         ]
       });
     }
@@ -69,6 +98,7 @@ export const ticketService = {
         include: {
           createdBy: true,
           assignedTo: true,
+          assignees: { include: { user: true } },
         },
       }),
     ]);
@@ -83,6 +113,7 @@ export const ticketService = {
       include: {
         createdBy: true,
         assignedTo: true,
+        assignees: { include: { user: true } },
         comments: {
           include: { author: true },
           orderBy: { createdAt: 'asc' },
@@ -97,8 +128,9 @@ export const ticketService = {
 
     // Verificar permissões para usuários não-admin
     if (userRole !== 'ADMIN') {
-      // Pode visualizar se for criador ou atribuído
-      if (ticket.createdById !== userId && ticket.assignedToId !== userId) {
+      // Pode visualizar se for criador, atribuído principal ou incluído nas atribuições adicionais
+      const isAssigned = ticket.assignedToId === userId || (ticket.assignees || []).some(a => a.userId === userId);
+      if (ticket.createdById !== userId && !isAssigned) {
         return null; // não pode ver
       }
       // Editar é controlado no update(); aqui apenas retornamos os dados
@@ -107,43 +139,82 @@ export const ticketService = {
     return ticket;
   },
 
-  update: async (id, data, userId, userRole) => {
-    // Permissões: ADMIN pode editar qualquer; USER pode editar apenas os tickets que ele criou
-    if (userRole !== 'ADMIN') {
-      const ticket = await prisma.ticket.findUnique({
-        where: { id },
-        select: { createdById: true }
-      });
-      if (!ticket || ticket.createdById !== userId) {
-        throw new Error('Permissão negada: você não pode editar este ticket');
-      }
+  update: async (id, data, userId, userRole, originalAssignedUserIds) => {
+    const current = await prisma.ticket.findUnique({
+      where: { id },
+      include: { assignees: true },
+    });
+    if (!current) throw new Error('Ticket não encontrado');
+
+    const isCreator = current.createdById === userId;
+    const isAdmin = userRole === 'ADMIN';
+  const isAssigned = current.assignees.some((a) => a.userId === userId) || current.assignedToId === userId;
+
+    // Regras: Admin/Criador: total; Atribuído: apenas operacional
+    if (!(isAdmin || isCreator)) {
+      if (!isAssigned) throw new Error('Permissão negada: você não pode editar este ticket');
+      // Atribuídos podem alterar somente controles operacionais: status e prioridade
+      const allowed = ['status', 'priority'];
+      const filtered = {};
+      for (const k of allowed) if (k in data) filtered[k] = data[k];
+      data = filtered;
     }
 
-    return prisma.ticket.update({
+    // Gerenciar múltiplos atribuídos (apenas admin/criador)
+    let assignedUserIds = undefined;
+    if ((isAdmin || isCreator) && Array.isArray(data.assignedUserIds)) {
+      assignedUserIds = Array.from(new Set(data.assignedUserIds.filter(Boolean)));
+      delete data.assignedUserIds;
+    } else {
+      delete data.assignedUserIds;
+    }
+
+    const updated = await prisma.ticket.update({
       where: { id },
       data,
       include: {
         createdBy: true,
         assignedTo: true,
+        assignees: { include: { user: true } },
       },
     });
-  },
 
-  remove: async (id, userId, userRole) => {
-    // Permissões: ADMIN pode remover; USER apenas se for criador
-    if (userRole !== 'ADMIN') {
-      const ticket = await prisma.ticket.findUnique({
-        where: { id },
-        select: { createdById: true }
-      });
-      if (!ticket || ticket.createdById !== userId) {
-        throw new Error('Permissão negada: você não pode remover este ticket');
+    if (assignedUserIds && (isAdmin || isCreator)) {
+      // Replace assignments set with provided list excluding primary assignedToId
+      const target = assignedUserIds.filter((uid) => uid !== updated.assignedToId);
+      // Remove não listados
+      await prisma.ticketAssignment.deleteMany({ where: { ticketId: id, userId: { notIn: target } } });
+      // Add os faltantes
+      if (target.length) {
+        await prisma.ticketAssignment.createMany({ data: target.map((uid) => ({ ticketId: id, userId: uid })), skipDuplicates: true });
+      } else {
+        // se vazio, limpa todos
+        await prisma.ticketAssignment.deleteMany({ where: { ticketId: id } });
       }
     }
 
-    return prisma.ticket.delete({
-      where: { id },
-    });
+    // Atribuídos podem adicionar pessoas (apenas add, sem remover), e não podem alterar o principal
+    if (!isAdmin && !isCreator && isAssigned && Array.isArray(originalAssignedUserIds)) {
+      const desired = Array.from(new Set(originalAssignedUserIds.filter(Boolean)));
+      const currentSet = new Set(updated.assignees.map(a => a.userId));
+      const toAdd = desired.filter(uid => uid !== updated.assignedToId && !currentSet.has(uid));
+      if (toAdd.length) {
+        await prisma.ticketAssignment.createMany({ data: toAdd.map(uid => ({ ticketId: id, userId: uid })), skipDuplicates: true });
+      }
+      // Não removemos ninguém se estiver faltando; e ignoramos tentativas de mudar assignedToId porque não veio neste fluxo
+    }
+
+    return updated;
+  },
+
+  remove: async (id, userId, _userRole) => {
+    // Apenas criador pode remover
+    const ticket = await prisma.ticket.findUnique({ where: { id }, select: { createdById: true } });
+    if (!ticket || ticket.createdById !== userId) {
+      throw new Error('Permissão negada: você não pode remover este ticket');
+    }
+    await prisma.ticketAssignment.deleteMany({ where: { ticketId: id } });
+    return prisma.ticket.delete({ where: { id } });
   },
 
   comment: async (ticketId, userId, body) => {

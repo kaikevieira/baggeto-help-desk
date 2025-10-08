@@ -12,6 +12,7 @@ const createSchema = z.object({
     status: z.enum(['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED']).optional(),
     priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
     assignedToId: z.number().optional(),
+    assignedUserIds: z.array(z.number()).optional(),
 
     // Campos de transporte
     originCity: z.string().optional(),
@@ -23,6 +24,7 @@ const createSchema = z.object({
     route: z.string().optional(), // Rota por estados (ex: "SP > PR > SC")
     freightBasis: z.enum(['FULL', 'TON']).optional(),
     incoterm: z.enum(['CIF', 'FOB']).optional(),
+    freightValue: z.number().optional(),
     paymentTerm: z.string().optional(),
     paymentType: z.string().optional(),
     cargoWeight: z.number().optional(),
@@ -47,6 +49,7 @@ const updateSchema = z.object({
     status: z.enum(['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED']).optional(),
     priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
     assignedToId: z.number().nullable().optional(),
+    assignedUserIds: z.array(z.number()).optional(),
 
     // Campos de transporte
     originCity: z.string().optional(),
@@ -58,6 +61,7 @@ const updateSchema = z.object({
     route: z.string().optional(), // Rota por estados (ex: "SP > PR > SC")
     freightBasis: z.enum(['FULL', 'TON']).optional(),
     incoterm: z.enum(['CIF', 'FOB']).optional(),
+    freightValue: z.number().optional().nullable(),
     paymentTerm: z.string().optional(),
     paymentType: z.string().optional(),
     cargoWeight: z.number().optional().nullable(),
@@ -88,6 +92,9 @@ export const ticketController = {
         ...req.body,
         createdById: parseInt(req.user.sub),
         assignedToId: req.body.assignedToId ? parseInt(req.body.assignedToId) : undefined,
+        assignedUserIds: Array.isArray(req.body.assignedUserIds)
+          ? req.body.assignedUserIds.map(Number)
+          : undefined,
       };
       const ticket = await ticketService.create(data);
       // Notificar criação (ator = criador)
@@ -168,8 +175,13 @@ export const ticketController = {
           ? null
           : parseInt(req.body.assignedToId);
       }
+      if (Object.prototype.hasOwnProperty.call(req.body, 'assignedUserIds')) {
+        updateData.assignedUserIds = Array.isArray(req.body.assignedUserIds)
+          ? req.body.assignedUserIds.map(Number)
+          : [];
+      }
       
-      const updated = await ticketService.update(id, updateData, userId, userRole);
+  const updated = await ticketService.update(id, updateData, userId, userRole, req.body.assignedUserIds);
       // Notificar atualização
       try { await notificationService.notifyTicketUpdated(id, parseInt(req.user.sub)); } catch {}
       res.json(updated);
