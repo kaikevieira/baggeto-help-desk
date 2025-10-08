@@ -10,15 +10,16 @@ export function getUsers() {
 }
 
 // ADMIN only
-export function createUser({ username, password, role = "USER" }) {
+export function createUser({ username, password, role = "USER" }, { idempotencyKey } = {}) {
   return apiFetch("/users", {
     method: "POST",
     body: { username, password, role },
+    idempotencyKey,
   });
 }
 
 // ADMIN only
-export function updateUser(id, { username, password, role }) {
+export function updateUser(id, { username, password, role }, { idempotencyKey } = {}) {
   // envia somente campos definidos
   const body = {};
   if (username !== undefined) body.username = username;
@@ -28,5 +29,6 @@ export function updateUser(id, { username, password, role }) {
   return apiFetch(`/users/${id}`, {
     method: "PUT",
     body,
+    idempotencyKey,
   });
 }
