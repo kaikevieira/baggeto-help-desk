@@ -62,6 +62,10 @@ export default function Tickets() {
       ticketNumber: t.ticketNumber,
       title: t.title,
       assignedTo: t.assignedTo?.username || '-',
+      assignees: [
+        ...(t.assignedTo ? [t.assignedTo] : []),
+        ...((t.assignees || []).map(a => a.user))
+      ].filter(Boolean),
       priority: priorityMap[t.priority] || "media",
       status: statusMap[t.status] || "aberto",
       updatedAt: new Date(t.updatedAt).toLocaleString('pt-BR', {
