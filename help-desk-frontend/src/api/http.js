@@ -28,7 +28,7 @@ async function refreshToken() {
   }
 }
 
-export async function apiFetch(path, { method = "GET", headers = {}, body, params, _isRetry = false } = {}) {
+export async function apiFetch(path, { method = "GET", headers = {}, body, params, idempotencyKey, _isRetry = false } = {}) {
   const url = new URL(path, BASE_URL);
   if (params && typeof params === "object") {
     Object.entries(params).forEach(([k, v]) => {
@@ -41,6 +41,10 @@ export async function apiFetch(path, { method = "GET", headers = {}, body, param
     credentials: "include", // envia cookies httpOnly
     headers: { "Content-Type": "application/json", ...headers },
   };
+
+  if (idempotencyKey && typeof idempotencyKey === 'string') {
+    opts.headers["Idempotency-Key"] = idempotencyKey;
+  }
 
   if (body !== undefined) {
     opts.body = typeof body === "string" ? body : JSON.stringify(body);
