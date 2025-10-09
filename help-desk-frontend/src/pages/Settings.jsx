@@ -78,14 +78,8 @@ export default function Settings() {
           </div>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex">
           <Button onClick={logout}>Sair</Button>
-          <button
-            className="rounded-xl border border-borda px-4 py-2 text-texto"
-            disabled
-          >
-            Tema (em breve)
-          </button>
         </div>
       </div>
     </AppLayout>
