@@ -5,7 +5,7 @@ export default function StatCard({ title, value, trend, hint, accent = "var(--co
     const hasTrend = typeof trend === 'number' && !Number.isNaN(trend);
     const positive = (hasTrend ? trend : 0) >= 0;
     return (
-        <div className="rounded-2xl border border-borda bg-[#1b1b1b]/70 shadow-xl shadow-black/30 overflow-hidden">
+    <div className="rounded-2xl border border-borda shadow-xl shadow-black/10 overflow-hidden" style={{ backgroundColor: 'var(--color-surface)' }}>
             <div className="h-1 w-full" style={{ backgroundColor: accent }} />
             <div className="p-5">
             <p className="text-sm text-texto">{title}</p>

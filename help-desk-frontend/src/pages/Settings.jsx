@@ -8,7 +8,13 @@ import { PageHeaderSkeleton, Skeleton } from "../components/Skeletons";
 export default function Settings() {
   usePageTitle('Configurações');
   const navigate = useNavigate();
-  const { user, logout, initializing } = useAuth();
+  const { user, logout, initializing, setTheme } = useAuth();
+  const currentTheme = user?.theme || 'DARK';
+  const themes = [
+    { key: 'DARK', label: 'Escuro (padrão)' },
+    { key: 'LIGHT', label: 'Claro' },
+    { key: 'LIGHT_PINK', label: 'Claro (rosa claro)' },
+  ];
 
   if (initializing) {
     return (
@@ -51,6 +57,25 @@ export default function Settings() {
               <strong>Perfil:</strong> {user?.role}
             </li>
           </ul>
+        </div>
+
+        <div className="rounded-2xl border border-borda p-4">
+          <h2 className="text-lg font-medium text-titulo mb-2">Tema</h2>
+          <p className="text-sm text-texto/70 mb-3">Escolha seu tema padrão (salvo por usuário)</p>
+          <div className="grid gap-2">
+            {themes.map(t => (
+              <label key={t.key} className="flex items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="theme"
+                  value={t.key}
+                  checked={currentTheme === t.key}
+                  onChange={async () => { await setTheme(t.key); }}
+                />
+                {t.label}
+              </label>
+            ))}
+          </div>
         </div>
 
         <div className="flex gap-2">

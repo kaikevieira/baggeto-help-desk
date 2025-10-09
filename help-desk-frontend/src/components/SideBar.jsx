@@ -29,7 +29,7 @@ const NavItem = ({ icon: Icon, label, active = false, onClick }) => (
       ${
         active 
           ? "border-azul-claro/50 bg-azul-claro/25 text-azul-claro" 
-          : "border-borda bg-[#1b1b1b] text-texto group-hover:text-azul-claro group-hover:border-azul-claro/40 group-hover:bg-azul-claro/10"
+          : "border-borda bg-[var(--color-surface)] text-texto group-hover:text-azul-claro group-hover:border-azul-claro/40 group-hover:bg-azul-claro/10"
       }`}>
       <Icon className="h-5 w-5" />
     </span>
@@ -66,13 +66,13 @@ export default function Sidebar({
   };
 
   return (
-    <aside className="sticky top-0 hidden h-screen w-72 flex-col border-r border-borda bg-[#141414] p-4 md:flex">
+    <aside className="sticky top-0 hidden h-screen w-72 flex-col border-r border-borda p-4 md:flex" style={{ backgroundColor: 'var(--color-sidebar)' }}>
       {/* Logo */}
-      <div className="mb-4 flex items-center gap-3 px-2 group cursor-pointer transition-all duration-300 hover:scale-105">
+  <div className="mb-4 flex items-center gap-3 px-2 group cursor-pointer transition-all duration-300 hover:scale-105">
         <img
           src="/logo.png"
           alt="Transportes Baggeto"
-          className="h-10 w-10 rounded-xl object-contain bg-azul-escuro/10 transition-all duration-300 group-hover:bg-azul-claro/20 group-hover:shadow-lg group-hover:shadow-azul-claro/20"
+          className="h-10 w-10 rounded-xl object-contain transition-all duration-300 group-hover:bg-azul-claro/10 group-hover:shadow-lg group-hover:shadow-azul-claro/20"
         />
         <div className="transition-all duration-300 group-hover:translate-x-1">
           <p className="leading-tight text-base font-semibold text-titulo group-hover:text-azul-claro transition-colors duration-300">
@@ -130,7 +130,7 @@ export default function Sidebar({
           className="group flex w-full items-center gap-3 rounded-xl border border-borda px-3 py-2 text-left text-sm text-texto hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400 transition-all duration-300 ease-in-out transform hover:scale-[1.02]"
           onClick={handleLogout}
         >
-          <span className="grid h-8 w-8 place-items-center rounded-lg border border-borda bg-[#1b1b1b] text-texto group-hover:text-red-400 group-hover:border-red-500/30 transition-all duration-300">
+          <span className="grid h-8 w-8 place-items-center rounded-lg border border-borda text-texto group-hover:text-red-400 group-hover:border-red-500/30 transition-all duration-300" style={{ backgroundColor: 'var(--color-surface)' }}>
             <FiLogOut className="h-5 w-5" />
           </span>
           <span className="font-medium">Sair</span>

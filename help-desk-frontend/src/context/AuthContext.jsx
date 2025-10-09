@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, useRef } from "react";
 import { login as apiLogin, logout as apiLogout, refresh as apiRefresh, me as apiMe } from "../api/auth";
+import { updateMyTheme } from "../api/users";
 
 const AuthCtx = createContext(null);
 
@@ -131,6 +132,13 @@ export function AuthProvider({ children }) {
         clearInterval(refreshTimerRef.current);
         refreshTimerRef.current = null;
       }
+    },
+    async setTheme(theme) {
+      if (!user) return;
+      const updated = await updateMyTheme(theme);
+      setUser(updated);
+      localStorage.setItem("auth_user", JSON.stringify(updated));
+      return updated;
     }
   }), [user, initializing]);
 

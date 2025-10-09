@@ -3,9 +3,9 @@ import { StatusPill, PriorityPill } from "./StatusPill";
 
 export default function TicketsTable({ tickets = [], onView }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-borda">
+    <div className="overflow-hidden rounded-2xl border border-borda" style={{ backgroundColor: 'var(--color-surface)' }}>
       <table className="min-w-full divide-y divide-borda/70">
-        <thead className="bg-[#151515] text-xs uppercase tracking-wide text-texto">
+        <thead className="text-xs uppercase tracking-wide text-texto" style={{ backgroundColor: 'var(--color-surface)' }}>
           <tr>
             <th className="px-4 py-3 text-left">Nº Chamado</th>
             <th className="px-4 py-3 text-left">Título</th>
@@ -18,7 +18,7 @@ export default function TicketsTable({ tickets = [], onView }) {
         </thead>
         <tbody className="divide-y divide-borda/60">
           {tickets.map((t) => (
-            <tr key={t.id} className="hover:bg-white/5">
+            <tr key={t.id} className="hover:bg-azul-claro/5">
               <td className="px-4 py-3 text-texto font-mono text-sm">
                 #{t.ticketNumber || t.id}
               </td>
