@@ -10,7 +10,9 @@ export const dashboardService = {
       baseWhere = {
         OR: [
           { createdById: userId },
-          { assignedToId: userId }
+          { assignedToId: userId },
+          // incluir também quando usuário está nas atribuições adicionais (N:N)
+          { assignees: { some: { userId: userId } } }
         ]
       };
     }
