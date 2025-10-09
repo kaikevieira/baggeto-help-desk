@@ -47,11 +47,19 @@ enum TollType {
   CLIENTE_PAGA_PEDAGIO
 }
 
+// Preferências de tema por usuário
+enum Theme {
+  DARK
+  LIGHT
+  LIGHT_PINK
+}
+
 model User {
   id           Int      @id @default(autoincrement())
   username     String   @unique
   passwordHash String
   role         Role     @default(USER)
+  theme        Theme    @default(DARK)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

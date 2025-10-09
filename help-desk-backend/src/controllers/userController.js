@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { userService } from '../services/userService.js';
 
 const roleEnum = z.enum(['USER', 'ADMIN']);
+const themeEnum = z.enum(['DARK','LIGHT','LIGHT_PINK']);
 
 export const userSchemas = {
   list: z.object({
@@ -28,6 +29,9 @@ export const userSchemas = {
       password: z.string().min(4).optional(), // opcional no edit
       role: roleEnum.optional(),
     }),
+  }),
+  updateMeTheme: z.object({
+    body: z.object({ theme: themeEnum }),
   }),
 };
 
@@ -82,6 +86,17 @@ export const userController = {
       }
 
       const user = await userService.update(id, data);
+      res.json(user);
+    } catch (e) {
+      next(e);
+    }
+  },
+
+  updateMeTheme: async (req, res, next) => {
+    try {
+      const userId = parseInt(req.user.sub);
+      const theme = req.body.theme;
+      const user = await userService.updateTheme(userId, theme);
       res.json(user);
     } catch (e) {
       next(e);

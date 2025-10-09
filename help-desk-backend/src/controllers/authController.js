@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { authService } from '../services/authService.js';
+import { userRepo } from '../repositories/userRepo.js';
 import { ENV } from '../config/env.js';
 
 const authSchema = z.object({
@@ -23,7 +24,7 @@ export const authController = {
 
   login: async (req, res, next) => {
     try {
-      const { accessToken, refreshToken, user } = await authService.login(req.body);
+  const { accessToken, refreshToken, user } = await authService.login(req.body);
 
       // cookies httpOnly
       const isProd = ENV.NODE_ENV === 'production';
@@ -40,7 +41,7 @@ export const authController = {
       res
         .cookie('access_token', accessToken, { ...baseCookie, maxAge: 1000 * 60 * 15 })
         .cookie('refresh_token', refreshToken, { ...baseCookie, maxAge: 1000 * 60 * 60 * 24 * 7 })
-        .json({ user });
+  .json({ user });
     } catch (e) {
       next(e);
     }
@@ -51,7 +52,7 @@ export const authController = {
       const refreshToken = req.cookies?.refresh_token;
       if (!refreshToken) return res.status(401).json({ message: 'Sem refresh' });
 
-      const { accessToken } = await authService.refresh(refreshToken);
+  const { accessToken } = await authService.refresh(refreshToken);
 
       const isProd = ENV.NODE_ENV === 'production';
       const cookieDomain = ENV.COOKIE_DOMAIN;
@@ -63,7 +64,7 @@ export const authController = {
         path: '/',
         domain,
       };
-      res.cookie('access_token', accessToken, { ...baseCookie, maxAge: 1000 * 60 * 15 }).json({ ok: true });
+  res.cookie('access_token', accessToken, { ...baseCookie, maxAge: 1000 * 60 * 15 }).json({ ok: true });
     } catch (e) {
       next(e);
     }
@@ -95,14 +96,9 @@ export const authController = {
   me: async (req, res, next) => {
     try {
       // req.user já está disponível através do middleware requireAuth
-      const { sub, username, role } = req.user;
-      res.json({ 
-        user: { 
-          id: sub, 
-          username, 
-          role 
-        } 
-      });
+      const { sub } = req.user;
+      const user = await userRepo.findById(parseInt(sub));
+      res.json({ user });
     } catch (e) {
       next(e);
     }

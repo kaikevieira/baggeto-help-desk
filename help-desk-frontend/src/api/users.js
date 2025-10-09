@@ -32,3 +32,8 @@ export function updateUser(id, { username, password, role }, { idempotencyKey } 
     idempotencyKey,
   });
 }
+
+// Authenticated user: update own theme
+export function updateMyTheme(theme, { idempotencyKey } = {}) {
+  return apiFetch(`/users/me`, { method: "PATCH", body: { theme } , idempotencyKey });
+}

@@ -9,5 +9,6 @@ const router = Router();
 router.get('/',     requireAuth,                         validate(userSchemas.list),   userController.list);
 router.post('/',    requireAuth, requireRole('ADMIN'), validate(userSchemas.create), userController.create);
 router.put('/:id',  requireAuth, requireRole('ADMIN'), validate(userSchemas.update), userController.update);
+router.patch('/me', requireAuth,                         validate(userSchemas.updateMeTheme), userController.updateMeTheme);
 
 export default router;

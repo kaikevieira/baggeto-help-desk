@@ -18,7 +18,7 @@ export const authService = {
   },
 
   async login({ username, password }) {
-    const user = await userRepo.findByUsername(username);
+  const user = await userRepo.findByUsername(username);
     if (!user) {
       const err = new Error('Credenciais inválidas');
       err.status = 401;
@@ -39,7 +39,7 @@ export const authService = {
     const decoded = verifyRefreshToken(refreshToken);
     await tokenRepo.storeRefresh(user.id, refreshToken, new Date(decoded.exp * 1000));
 
-    return { accessToken, refreshToken, user: { id: user.id, username: user.username, role: user.role } };
+  return { accessToken, refreshToken, user: { id: user.id, username: user.username, role: user.role, theme: user.theme } };
   },
 
   async refresh(refreshToken) {

@@ -8,4 +8,6 @@ export const userService = {
   create: (data) => userRepo.create(data),
 
   update: (id, data) => userRepo.update(id, data),
+
+  updateTheme: (id, theme) => userRepo.updateTheme(id, theme),
 };
