@@ -218,8 +218,28 @@ export const ticketService = {
     if (!ticket || ticket.createdById !== userId) {
       throw new Error('Permissão negada: você não pode remover este ticket');
     }
-    await prisma.ticketAssignment.deleteMany({ where: { ticketId: id } });
-    return prisma.ticket.delete({ where: { id } });
+    // Remover em ordem segura dentro de uma transação para evitar violações de FK
+    return prisma.$transaction(async (tx) => {
+      // 1) Notificações e destinatários
+      const notifIds = await tx.notification.findMany({
+        where: { ticketId: id },
+        select: { id: true },
+      });
+      const nids = notifIds.map((n) => n.id);
+      if (nids.length) {
+        await tx.notificationRecipient.deleteMany({ where: { notificationId: { in: nids } } });
+      }
+      await tx.notification.deleteMany({ where: { ticketId: id } });
+
+      // 2) Comentários
+      await tx.comment.deleteMany({ where: { ticketId: id } });
+
+      // 3) Atribuições extras
+      await tx.ticketAssignment.deleteMany({ where: { ticketId: id } });
+
+      // 4) Ticket
+      return tx.ticket.delete({ where: { id } });
+    });
   },
 
   comment: async (ticketId, userId, body) => {
