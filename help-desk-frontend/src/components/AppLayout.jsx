@@ -17,7 +17,7 @@ export default function AppLayout({ onNavigate, onLogout, children }) {
       </main>
       
       {/* Sidebar mobile overlay */}
-      <div className="md:hidden fixed inset-0 z-50 bg-black/50" id="mobile-sidebar">
+      <div className="md:hidden fixed inset-0 z-50" id="mobile-sidebar" style={{ backgroundColor: 'var(--color-overlay)' }}>
         <div className="w-72 h-full" style={{ backgroundColor: 'var(--color-sidebar)' }}>
           <Sidebar onNavigate={onNavigate} onLogout={onLogout} />
         </div>

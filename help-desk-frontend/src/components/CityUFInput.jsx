@@ -116,7 +116,7 @@ export default function CityUFInput({
           className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto placeholder:text-texto/50 focus:outline-none focus:ring-2 focus:ring-azul-claro/30"
         />
         {open && (
-          <div className="absolute z-20 mt-1 w-full max-h-60 overflow-y-auto rounded-xl border border-borda bg-[#101010] shadow-lg custom-scrollbar">
+          <div className="absolute z-20 mt-1 w-full max-h-60 overflow-y-auto rounded-xl border border-borda shadow-lg custom-scrollbar" style={{ backgroundColor: 'var(--color-surface)' }}>
             {loading && (
               <div className="px-3 py-2 text-sm text-texto/70">Carregando cidades...</div>
             )}
@@ -131,7 +131,7 @@ export default function CityUFInput({
                 type="button"
                 key={s.id}
                 onClick={() => selectCity(s)}
-                className="block w-full px-3 py-2 text-left text-sm hover:bg-white/5 hover:text-titulo transition-colors"
+                className="block w-full px-3 py-2 text-left text-sm hover:bg-borda/20 hover:text-titulo transition-colors"
               >
                 {s.nome}/{s.uf}
               </button>

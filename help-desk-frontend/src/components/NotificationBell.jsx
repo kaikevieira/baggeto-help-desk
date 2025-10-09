@@ -91,14 +91,14 @@ export default function NotificationBell() {
       >
         <FiBell className="w-5 h-5 text-texto" />
         {count > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-[10px] text-white grid place-items-center">
+          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] text-white grid place-items-center" style={{ backgroundColor: 'var(--color-vermelho)' }}>
             {count}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute m-2 right-0 mt-2 w-96 max-w-[90vw] rounded-xl border border-borda bg-[#101010] shadow-xl z-50">
+        <div className="absolute m-2 right-0 mt-2 w-96 max-w-[90vw] rounded-xl border border-borda shadow-xl z-50" style={{ backgroundColor: 'var(--color-surface)' }}>
           <div className="px-3 py-2 border-b border-borda flex items-center justify-between">
             <span className="text-sm font-medium text-titulo">Notificações</span>
             {loading && <span className="text-xs text-texto/60">carregando…</span>}
@@ -115,7 +115,7 @@ export default function NotificationBell() {
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => handleView(rec)} className="rounded-md px-2 py-1 text-xs bg-azul-claro/20 text-azul-claro border border-azul-claro/30 hover:bg-azul-claro/30">Visualizar</button>
-                  <button onClick={() => handleDismiss(rec)} className="rounded-md px-2 py-1 text-xs bg-gray-500/10 text-texto border border-borda hover:bg-gray-500/20">Fechar</button>
+                  <button onClick={() => handleDismiss(rec)} className="rounded-md px-2 py-1 text-xs text-texto border border-borda hover:bg-borda/20">Fechar</button>
                 </div>
               </div>
             ))}

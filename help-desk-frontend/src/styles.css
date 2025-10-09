@@ -22,6 +22,7 @@ html, body {
     --color-amarelo: #eab308;
     --color-surface: #151515;
     --color-sidebar: #141414;
+    --color-overlay: rgba(0,0,0,0.5);
 }
 
 [data-theme="LIGHT"] {
@@ -36,6 +37,7 @@ html, body {
     --color-amarelo: #d97706;
     --color-surface: #ffffff;
     --color-sidebar: #ffffff;
+    --color-overlay: rgba(15, 23, 42, 0.35);
 }
 
 [data-theme="LIGHT_PINK"] {
@@ -50,6 +52,7 @@ html, body {
     --color-amarelo: #d97706;
     --color-surface: #ffffff;
     --color-sidebar: #ffffff;
+    --color-overlay: rgba(190, 24, 93, 0.25);
 }
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -77,26 +80,26 @@ html, body {
 
 /* Custom select styles - dark theme */
 .custom-select {
-    background-color: #101010 !important;
-    color: #c1c1c1 !important;
+    background-color: var(--color-surface) !important;
+    color: var(--color-texto) !important;
 }
 
 .custom-select option {
-    background-color: #101010 !important;
-    color: #c1c1c1 !important;
+    background-color: var(--color-surface) !important;
+    color: var(--color-texto) !important;
     padding: 8px 12px;
 }
 
 .custom-select option:hover,
 .custom-select option:focus,
 .custom-select option:checked {
-    background-color: rgba(255, 255, 255, 0.05) !important;
-    color: #ffffff !important;
+    background-color: color-mix(in oklab, var(--color-borda) 25%, transparent) !important;
+    color: var(--color-titulo) !important;
 }
 
 /* Force dark theme for select dropdown in all browsers */
 .custom-select:focus {
-    background-color: #101010 !important;
+    background-color: var(--color-surface) !important;
 }
 
 select.custom-select {

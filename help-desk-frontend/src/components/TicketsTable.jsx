@@ -13,7 +13,7 @@ export default function TicketsTable({ tickets = [], onView }) {
             <th className="px-4 py-3 text-left">Prioridade</th>
             <th className="px-4 py-3 text-left">Status</th>
             <th className="px-4 py-3 text-left">Atualizado</th>
-            <th className="px-4 py-3 text-center">Ações</th>
+            <th className="px-2 py-3 text-center w-[80px]">Ações</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-borda/60">
@@ -43,9 +43,9 @@ export default function TicketsTable({ tickets = [], onView }) {
                 <StatusPill status={t.status} />
               </td>
               <td className="px-4 py-3 text-texto/70 text-sm">{t.updatedAt}</td>
-              <td className="px-4 py-3 text-center">
+              <td className="px-2 py-2 text-center">
                 <button
-                  className="inline-flex items-center gap-1 rounded-lg bg-azul-escuro/20 hover:bg-azul-escuro/30 border border-azul-escuro/40 px-3 py-1.5 text-xs text-azul-claro transition-colors"
+                  className="inline-flex items-center gap-1 rounded-md bg-azul-escuro/15 hover:bg-azul-escuro/25 border border-azul-escuro/40 px-2.5 py-1 text-[11px] text-azul-claro transition-colors"
                   onClick={() => onView && onView(t.id)}
                 >
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">

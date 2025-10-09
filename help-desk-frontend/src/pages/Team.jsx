@@ -77,8 +77,8 @@ function UserModal({ open, onClose, onSave, initial }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4">
-      <div className="w-full max-w-lg rounded-2xl border border-borda bg-[#111] p-5">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4 backdrop-blur-[1px]">
+      <div className="w-full max-w-lg rounded-2xl border border-borda p-5" style={{ backgroundColor: 'var(--color-surface)' }}>
         <h3 className="text-lg font-semibold text-titulo">
           {isEdit ? "Editar usuário" : "Novo usuário"}
         </h3>
@@ -271,9 +271,9 @@ export default function Team() {
         </div>
       )}
 
-      <div className="overflow-hidden rounded-2xl border border-borda">
+      <div className="overflow-hidden rounded-2xl border border-borda" style={{ backgroundColor: 'var(--color-surface)' }}>
         <table className="min-w-full divide-y divide-borda/70">
-          <thead className="bg-[#151515] text-xs uppercase tracking-wide text-texto">
+          <thead className="text-xs uppercase tracking-wide text-texto" style={{ backgroundColor: 'var(--color-surface)' }}>
             <tr>
               <th className="px-4 py-3 text-left">#</th>
               <th className="px-4 py-3 text-left">Usuário</th>
@@ -297,11 +297,11 @@ export default function Team() {
               </tr>
             ) : (
               filtered.map((u, idx) => (
-                <tr key={u.id} className="hover:bg-white/5">
+                <tr key={u.id} className="hover:bg-borda/20">
                   <td className="px-4 py-3 text-texto/70">{idx + 1}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <div className="grid h-8 w-8 place-items-center rounded-lg border border-borda bg-[#1b1b1b] text-sm text-titulo">
+                      <div className="grid h-8 w-8 place-items-center rounded-lg border border-borda" style={{ backgroundColor: 'var(--color-surface)' }}>
                         {u.username?.[0]?.toUpperCase() || "U"}
                       </div>
                       <div className="min-w-0">

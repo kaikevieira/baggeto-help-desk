@@ -93,7 +93,8 @@ export default function CompanySelect({ value, onChange, placeholder = "Selecion
       {open && (
         <div
           ref={panelRef}
-          className="absolute z-20 mt-2 max-h-72 w-full overflow-auto rounded-xl border border-borda bg-[#111315] p-1 shadow-xl"
+          className="absolute z-20 mt-2 max-h-72 w-full overflow-auto rounded-xl border border-borda p-1 shadow-xl"
+          style={{ backgroundColor: 'var(--color-surface)' }}
           onMouseDown={(e) => e.preventDefault()}
         >
           {items.length === 0 && (
@@ -105,8 +106,8 @@ export default function CompanySelect({ value, onChange, placeholder = "Selecion
               data-index={idx}
               type="button"
               onClick={() => handleSelect(it)}
-              className={`block w-full rounded-lg px-3 py-2 text-left text-sm text-texto hover:bg-white/5 ${
-                idx === activeIndex ? "bg-white/10" : ""
+              className={`block w-full rounded-lg px-3 py-2 text-left text-sm text-texto hover:bg-borda/20 ${
+                idx === activeIndex ? "bg-borda/20" : ""
               }`}
             >
               <div className="font-medium">{it.name}</div>
