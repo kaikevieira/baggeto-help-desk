@@ -41,12 +41,12 @@ html, body {
 }
 
 [data-theme="LIGHT_PINK"] {
-    --color-fundo: #ffffff;
+    --color-fundo: #fafafa;
     --color-titulo: #0f172a;
     --color-texto: #334155;
     --color-azul-claro: #ec4899;
     --color-azul-escuro: #db2777; 
-    --color-borda: #f1f5f9;
+    --color-borda: #e5e7eb; 
     --color-verde: #16a34a;
     --color-vermelho: #dc2626;
     --color-amarelo: #d97706;
