@@ -39,7 +39,7 @@ export const authService = {
     const decoded = verifyRefreshToken(refreshToken);
     await tokenRepo.storeRefresh(user.id, refreshToken, new Date(decoded.exp * 1000));
 
-  return { accessToken, refreshToken, user: { id: user.id, username: user.username, role: user.role, theme: user.theme } };
+  return { accessToken, refreshToken, user: { id: user.id, username: user.username, email: user.email, role: user.role, theme: user.theme } };
   },
 
   async refresh(refreshToken) {
