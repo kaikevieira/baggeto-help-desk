@@ -41,7 +41,7 @@ export function ticketEmailTemplate({ title, message, ticketId }) {
       </tr>
       <tr>
         <td style="padding:0 20px 24px 20px">
-          <a href="${url}" style="display:inline-block;background:#db2777;color:#fff;text-decoration:none;padding:10px 16px;border-radius:10px;font-weight:600">Abrir chamado</a>
+          <a href="${url}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:10px 16px;border-radius:10px;font-weight:600">Abrir chamado</a>
           <div style="margin-top:10px;color:#64748b;font-size:12px">Se o botão não funcionar, acesse: <a href="${url}">${url}</a></div>
         </td>
       </tr>
