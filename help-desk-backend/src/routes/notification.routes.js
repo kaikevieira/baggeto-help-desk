@@ -13,5 +13,6 @@ router.get('/stream', requireAuth, notificationController.stream);
 // Debug/test endpoint
 router.post('/test-email', requireAuth, notificationController.testEmail);
 router.post('/test-email/:userId', requireAuth, notificationController.testEmailToUser);
+router.post('/test-email-address', requireAuth, notificationController.testEmailToAddress);
 
 export default router;

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { notificationService } from '../services/notificationService.js';
+import { sendMail, ticketEmailTemplate } from '../utils/mailer.js';
 
 const listSchema = z.object({
   query: z.object({
@@ -14,6 +15,7 @@ const idParamSchema = z.object({ params: z.object({ id: z.coerce.number() }) });
 export const notificationController = {
   listValidate: listSchema,
   idValidate: idParamSchema,
+  emailBodyValidate: z.object({ body: z.object({ to: z.string().email() }) }),
 
   list: async (req, res, next) => {
     try {
@@ -80,6 +82,21 @@ export const notificationController = {
       const ok = await notificationService.sendTestEmail(userId);
       if (!ok) return res.status(400).json({ message: 'Sem e-mail cadastrado ou SMTP não configurado' });
       res.json({ ok: true });
+    } catch (e) { next(e); }
+  },
+
+  // Admin: envia e-mail de teste para um endereço arbitrário (diagnóstico)
+  testEmailToAddress: async (req, res, next) => {
+    try {
+      if (req.user.role !== 'ADMIN') {
+        return res.status(403).json({ message: 'Apenas ADMIN pode testar e-mail para endereços arbitrários' });
+      }
+      const { to } = req.body || {};
+      if (!to) return res.status(400).json({ message: 'Campo "to" é obrigatório' });
+      const subject = 'Teste de e-mail • Diagnóstico SMTP';
+      const html = ticketEmailTemplate({ title: 'Teste de e-mail (diagnóstico)', message: 'Se você recebeu este e-mail, o envio para domínios externos está funcionando.', ticketId: 0 });
+      const info = await sendMail({ to, subject, html });
+      res.json({ ok: true, info: { accepted: info?.accepted, rejected: info?.rejected } });
     } catch (e) { next(e); }
   }
 };

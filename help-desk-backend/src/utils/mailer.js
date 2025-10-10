@@ -9,7 +9,12 @@ export function getTransporter() {
     host: ENV.SMTP_HOST,
     port: ENV.SMTP_PORT || 587,
     secure: !!ENV.SMTP_SECURE,
+    requireTLS: !!ENV.SMTP_REQUIRE_TLS,
+    name: ENV.SMTP_NAME,
+    logger: !!ENV.SMTP_LOGGER,
+    debug: !!ENV.SMTP_DEBUG,
     auth: ENV.SMTP_USER ? { user: ENV.SMTP_USER, pass: ENV.SMTP_PASS } : undefined,
+    tls: { rejectUnauthorized: ENV.SMTP_TLS_REJECT_UNAUTHORIZED !== false }
   });
   return transporter;
 }
@@ -17,7 +22,29 @@ export function getTransporter() {
 export async function sendMail({ to, subject, html, text }) {
   const tx = getTransporter();
   if (!tx) return { skipped: true };
-  const info = await tx.sendMail({ from: ENV.MAIL_FROM, to, subject, html, text });
+  // Use authenticated SMTP user as envelope sender to avoid relay blocks; keep header From for display
+  const fromHeader = ENV.MAIL_FROM || ENV.SMTP_USER;
+  const envelopeFrom = ENV.SMTP_USER || fromHeader;
+  const mail = {
+    from: fromHeader,
+    to,
+    subject,
+    html,
+    text,
+    envelope: { from: envelopeFrom, to },
+    ...(ENV.MAIL_FROM && ENV.MAIL_FROM !== envelopeFrom ? { replyTo: ENV.MAIL_FROM } : {})
+  };
+  const info = await tx.sendMail(mail);
+  // Optional debug logging
+  if (process.env.NODE_ENV !== 'production') {
+    try {
+      const accepted = Array.isArray(info.accepted) ? info.accepted : [];
+      const rejected = Array.isArray(info.rejected) ? info.rejected : [];
+      if (rejected.length) {
+        console.warn('email send partial rejection:', { to, rejected });
+      }
+    } catch {}
+  }
   return info;
 }
 

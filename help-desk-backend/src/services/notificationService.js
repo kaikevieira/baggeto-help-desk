@@ -58,11 +58,22 @@ export const notificationService = {
       if (users.length) {
         const subject = `${type === 'COMMENT_ADDED' ? 'Novo comentário' : type === 'TICKET_UPDATED' ? 'Ticket atualizado' : 'Novo ticket'} • #${ticketId}`;
         const html = ticketEmailTemplate({ title: subject, message, ticketId });
-        await Promise.all(users.map(u => sendMail({ to: u.email, subject, html })));
+        const results = await Promise.allSettled(users.map(u => sendMail({ to: u.email, subject, html })));
+        results.forEach((r, i) => {
+          const email = users[i]?.email;
+          if (r.status === 'rejected') {
+            console.error('email send failed:', { email, error: r.reason?.message || r.reason });
+          } else {
+            const info = r.value;
+            if (Array.isArray(info?.rejected) && info.rejected.length) {
+              console.error('email was rejected by SMTP for:', { email, rejected: info.rejected });
+            }
+          }
+        });
       }
     } catch (e) {
-      // log silencioso
-      console.error('email notification failed:', e?.message || e);
+      // log detalhado
+      console.error('email notification batch failed:', e?.message || e);
     }
     return notification;
   },

@@ -19,4 +19,10 @@ export const ENV = {
   SMTP_PASS: process.env.SMTP_PASS,
   MAIL_FROM: process.env.MAIL_FROM || process.env.SMTP_USER,
   APP_NAME: process.env.APP_NAME || 'Help Desk',
+  // SMTP advanced (optional)
+  SMTP_LOGGER: process.env.SMTP_LOGGER === 'true',
+  SMTP_DEBUG: process.env.SMTP_DEBUG === 'true',
+  SMTP_REQUIRE_TLS: process.env.SMTP_REQUIRE_TLS === 'true',
+  SMTP_NAME: process.env.SMTP_NAME,
+  SMTP_TLS_REJECT_UNAUTHORIZED: process.env.SMTP_TLS_REJECT_UNAUTHORIZED === 'false' ? false : true,
 };
