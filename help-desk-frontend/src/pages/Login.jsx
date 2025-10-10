@@ -6,6 +6,7 @@ import AuthCard from "../components/AuthCard";
 import Button from "../components/Button";
 import InputField from "../components/InputField";
 import { usePageTitle } from "../hooks/usePageTitle";
+import { FiHeart } from "react-icons/fi";
 
 
 export default function Login() {
@@ -155,6 +156,20 @@ export default function Login() {
                     </Button>
                 </form>
             </AuthCard>
+            <footer className="fixed inset-x-0 bottom-4 flex justify-center px-4">
+                <p className="text-xs sm:text-sm text-texto/70">
+                    Feito com <FiHeart className="inline align-middle text-[var(--color-vermelho)] mx-1" aria-label="amor" /> por
+                    {" "}
+                    <a
+                        href="https://linkedin.com.br/in/kaikeszlachatavieira"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-azul-claro hover:underline"
+                    >
+                        Kaike Szlachata Vieira
+                    </a>
+                </p>
+            </footer>
         </AuthBackground>
     );
 }
