@@ -57,6 +57,7 @@ enum Theme {
 model User {
   id           Int      @id @default(autoincrement())
   username     String   @unique
+  email        String?
   passwordHash String
   role         Role     @default(USER)
   theme        Theme    @default(DARK)
