@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { FiTruck, FiMapPin, FiEdit2, FiSave, FiChevronLeft, FiFileText, FiDollarSign, FiPackage, FiSettings, FiMessageSquare } from "react-icons/fi";
 import { useNavigate, useParams } from "react-router-dom";
 import { addComment, getTicket, listComments, updateTicket, deleteTicket } from "../api/tickets";
 import UserSelect from "../components/UserSelect";
@@ -327,7 +328,7 @@ export default function TicketDetails() {
                     onClick={toggleEdit} 
                     className={`px-2 sm:px-4 py-2 min-w-[70px] sm:min-w-[100px] text-xs sm:text-sm ${isEditing ? 'bg-green-600 hover:bg-green-700' : 'bg-azul-claro hover:bg-azul-claro/80'}`}
                   >
-                    {isEditing ? (saving ? 'Salvando...' : '💾 Salvar') : '✏️ Editar'}
+                    {isEditing ? (saving ? 'Salvando...' : (<span className="inline-flex items-center gap-2"><FiSave />Salvar</span>)) : (<span className="inline-flex items-center gap-2"><FiEdit2 />Editar</span>)}
                   </Button>
                 )}
                 {isEditing && (
@@ -341,7 +342,7 @@ export default function TicketDetails() {
                   </Button>
                 )}
                 <Button onClick={() => navigate("/tickets")} className="bg-gray-600 hover:bg-gray-700 px-2 sm:px-4 py-2 min-w-[70px] sm:min-w-[100px] text-xs sm:text-sm">
-                  ← Voltar
+                  <span className="inline-flex items-center gap-2"><FiChevronLeft />Voltar</span>
                 </Button>
               </div>
             </div>
@@ -357,8 +358,8 @@ export default function TicketDetails() {
             {/* ESQUERDA — TRANSPORTE */}
             <section className="rounded-2xl border border-borda p-3 sm:p-6 min-w-0 max-w-full overflow-hidden">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-azul-claro/20 flex items-center justify-center">
-                  <span className="text-azul-claro text-lg">🚛</span>
+                <div className="w-10 h-10 rounded-xl bg-azul-claro/20 flex items-center justify-center text-azul-claro text-lg">
+                  <FiTruck />
                 </div>
                 <h2 className="text-xl font-semibold text-titulo">Informações de Transporte</h2>
               </div>
@@ -367,7 +368,7 @@ export default function TicketDetails() {
                 {/* ORIGEM E DESTINO */}
                 <div className="rounded-xl p-4 border border-borda">
                   <h3 className="text-sm font-medium text-titulo mb-3 flex items-center gap-2">
-                    📍 Rota de Transporte
+                    <FiMapPin /> Rota de Transporte
                   </h3>
                   <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
                     <div className="min-w-0">
@@ -471,7 +472,7 @@ export default function TicketDetails() {
                 {/* DESCRIÇÃO */}
                 <div className="rounded-xl p-3 sm:p-4 border border-borda max-w-full overflow-hidden">
                   <h3 className="text-sm font-medium text-titulo mb-3 flex items-center gap-2">
-                    📝 Descrição do Chamado
+                    <FiFileText /> Descrição do Chamado
                   </h3>
                   <div className="rounded-lg bg-fundo/50 border border-borda px-3 sm:px-4 py-3 max-w-full overflow-hidden">
                     {isEditing && canEditFull ? (
@@ -490,7 +491,7 @@ export default function TicketDetails() {
                 {/* INFORMAÇÕES FINANCEIRAS */}
                 <div className="rounded-xl p-4 border border-borda">
                   <h3 className="text-sm font-medium text-titulo mb-3 flex items-center gap-2">
-                    💰 Informações Financeiras
+                    <FiDollarSign /> Informações Financeiras
                   </h3>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
@@ -547,7 +548,7 @@ export default function TicketDetails() {
                 {/* INFORMAÇÕES DA CARGA */}
                 <div className="rounded-xl p-4 border border-borda">
                   <h3 className="text-sm font-medium text-titulo mb-3 flex items-center gap-2">
-                    📦 Informações da Carga
+                    <FiPackage /> Informações da Carga
                   </h3>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
@@ -728,8 +729,8 @@ export default function TicketDetails() {
             {/* DIREITA — OPERACIONAL */}
             <section className="rounded-2xl border border-borda p-3 sm:p-6 min-w-0 max-w-full overflow-hidden">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center">
-                  <span className="text-green-400 text-lg">⚙️</span>
+                <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center text-green-400 text-lg">
+                  <FiSettings />
                 </div>
                 <h2 className="text-xl font-semibold text-titulo">Controle Operacional</h2>
               </div>
@@ -816,7 +817,7 @@ export default function TicketDetails() {
           <section className="mt-4 sm:mt-6 rounded-2xl border border-borda p-4 sm:p-6 min-w-0">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-xl bg-yellow-500/20 flex items-center justify-center">
-                <span className="text-yellow-400 text-lg">💬</span>
+                <span className="text-yellow-400 text-lg"><FiMessageSquare /></span>
               </div>
               <h2 className="text-xl font-semibold text-titulo">Comentários</h2>
             </div>

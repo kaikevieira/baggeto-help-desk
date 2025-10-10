@@ -1,4 +1,4 @@
-export const BASE_URL = "https://uncertain-dione-kaikevieira-a7451037.koyeb.app";
+export const BASE_URL = "https://free-sarajane-kaikevieira-4a44ef78.koyeb.app";
 
 // Flag para evitar múltiplos refreshes simultâneos
 let isRefreshing = false;
