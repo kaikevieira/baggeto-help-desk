@@ -1,4 +1,5 @@
 import { prisma } from '../db.js';
+import { sendMail, ticketEmailTemplate } from '../utils/mailer.js';
 
 // In-memory SSE subscribers: Map<userId, Set<Response>>
 const subscribers = new Map();
@@ -47,7 +48,36 @@ export const notificationService = {
     for (const r of notification.recipients) {
       pushToUser(r.userId, { kind: 'notification:new', notificationId: notification.id });
     }
+
+    // Envio de e-mail (assíncrono best-effort)
+    try {
+      const users = await prisma.user.findMany({
+        where: { id: { in: Array.from(recipientIds) }, email: { not: null } },
+        select: { id: true, email: true }
+      });
+      if (users.length) {
+        const subject = `${type === 'COMMENT_ADDED' ? 'Novo comentário' : type === 'TICKET_UPDATED' ? 'Ticket atualizado' : 'Novo ticket'} • #${ticketId}`;
+        const html = ticketEmailTemplate({ title: subject, message, ticketId });
+        await Promise.all(users.map(u => sendMail({ to: u.email, subject, html })));
+      }
+    } catch (e) {
+      // log silencioso
+      console.error('email notification failed:', e?.message || e);
+    }
     return notification;
+  },
+  
+  async sendTestEmail(userId) {
+    try {
+      const u = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+      if (!u?.email) return false;
+      const subject = 'Teste de e-mail • Notificações Help Desk';
+      const html = ticketEmailTemplate({ title: 'Teste de e-mail', message: 'Se você recebeu este e-mail, seu SMTP está configurado corretamente.', ticketId: 0 });
+      await sendMail({ to: u.email, subject, html });
+      return true;
+    } catch {
+      return false;
+    }
   },
 
   // Eventos helpers

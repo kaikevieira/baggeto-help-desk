@@ -56,4 +56,30 @@ export const notificationController = {
   },
 
   stream: (req, res) => notificationService.sseHandler(req, res),
+
+  // Envia um e-mail de teste para o usuário autenticado (se tiver e-mail cadastrado)
+  testEmail: async (req, res, next) => {
+    try {
+      const userId = Number(req.user.sub);
+      const ok = await notificationService.sendTestEmail(userId);
+      if (!ok) return res.status(400).json({ message: 'Sem e-mail cadastrado ou SMTP não configurado' });
+      res.json({ ok: true });
+    } catch (e) { next(e); }
+  }
+  ,
+  // Admin: envia e-mail de teste para um usuário específico
+  testEmailToUser: async (req, res, next) => {
+    try {
+      if (req.user.role !== 'ADMIN') {
+        return res.status(403).json({ message: 'Apenas ADMIN pode testar e-mail de outro usuário' });
+      }
+      const userId = Number(req.params.userId);
+      if (!userId || Number.isNaN(userId)) {
+        return res.status(400).json({ message: 'userId inválido' });
+      }
+      const ok = await notificationService.sendTestEmail(userId);
+      if (!ok) return res.status(400).json({ message: 'Sem e-mail cadastrado ou SMTP não configurado' });
+      res.json({ ok: true });
+    } catch (e) { next(e); }
+  }
 };
