@@ -17,6 +17,7 @@ export const userSchemas = {
       username: z.string().min(3, 'Usuário deve ter ao menos 3 caracteres'),
       password: z.string().min(4, 'Senha deve ter ao menos 4 caracteres'),
       role: roleEnum.optional().default('USER'),
+      email: z.string().email().optional().or(z.literal('').transform(() => undefined)),
     }),
   }),
 
@@ -28,6 +29,7 @@ export const userSchemas = {
       username: z.string().min(3).optional(),
       password: z.string().min(4).optional(), // opcional no edit
       role: roleEnum.optional(),
+      email: z.string().email().optional().or(z.literal('').transform(() => undefined)),
     }),
   }),
   updateMeTheme: z.object({
@@ -54,6 +56,7 @@ export const userController = {
       const passwordHash = await bcrypt.hash(req.body.password, 10);
       const user = await userService.create({
         username: req.body.username,
+        email: req.body.email,
         passwordHash,
         role: req.body.role ?? 'USER',
       });
@@ -80,7 +83,8 @@ export const userController = {
 
       const data = {};
       if (req.body.username !== undefined) data.username = req.body.username;
-      if (req.body.role !== undefined) data.role = req.body.role;
+  if (req.body.role !== undefined) data.role = req.body.role;
+  if (req.body.email !== undefined) data.email = req.body.email;
       if (req.body.password) {
         data.passwordHash = await bcrypt.hash(req.body.password, 10);
       }
