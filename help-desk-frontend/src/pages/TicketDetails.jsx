@@ -176,14 +176,38 @@ export default function TicketDetails() {
       return;
     }
 
+    // Otimista: aplica visualmente e salva em background
+    const prevTicket = ticket;
+    const nextTicket = { ...ticket };
+    // Atualiza campos simples diretamente do draft
+    for (const key of fields) {
+      if (Object.prototype.hasOwnProperty.call(payload, key)) {
+        nextTicket[key] = draft[key];
+      }
+    }
+    // Atribuições (usa objetos do draft)
+    if (Object.prototype.hasOwnProperty.call(payload, 'assignedToId') || Object.prototype.hasOwnProperty.call(payload, 'assignedUserIds')) {
+      const list = Array.isArray(draft.assignedList) ? draft.assignedList : [];
+      const primary = list[0] || null;
+      const rest = list.slice(1);
+      nextTicket.assignedToId = primary ? primary.id : null;
+      nextTicket.assignedTo = primary || null;
+      nextTicket.assignees = rest.map(u => ({ userId: u.id, user: u }));
+    }
+    // Atualiza UI imediatamente
+    setTicket(nextTicket);
+    setIsEditing(false);
+    setDraft(null);
+
+    // Envia a atualização ao servidor em background e concilia resposta
     setSaving(true);
     try {
       const key = `ticket-save-draft:${id}:${Date.now()}`;
       const updated = await updateTicket(id, payload, { idempotencyKey: key });
       setTicket(updated);
-      setIsEditing(false);
-      setDraft(null);
     } catch (e) {
+      // Reverte em caso de erro
+      setTicket(prevTicket);
       setError(e?.message || "Erro ao salvar");
     } finally {
       setSaving(false);
