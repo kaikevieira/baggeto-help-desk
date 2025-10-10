@@ -110,12 +110,14 @@ export default function Sidebar({
           active={isActive("/tickets/new")}
           onClick={() => go("/tickets/new")}
         />
-        <NavItem
-          label="Equipe"
-          icon={FiUsers}
-          active={isActive("/team")}
-          onClick={() => go("/team")}
-        />
+        {user?.role === 'ADMIN' && (
+          <NavItem
+            label="Equipe"
+            icon={FiUsers}
+            active={isActive("/team")}
+            onClick={() => go("/team")}
+          />
+        )}
         <NavItem
           label="Configurações"
           icon={FiSettings}

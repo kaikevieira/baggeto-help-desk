@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import PrivateRoute from "../context/PrivateRoute.jsx";
+import { useAuth } from "../context/AuthContext.jsx";
 import Dashboard from "../pages/Dashboard";
 import Login from "../pages/Login";
 import Settings from "../pages/Settings";
@@ -9,6 +10,8 @@ import TicketNew from "../pages/TicketNew";
 import Tickets from "../pages/Tickets";
 
 const MainRoutes = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
   return (
     <Routes>
       {/* pública */}
@@ -21,7 +24,11 @@ const MainRoutes = () => {
         <Route path="/tickets" element={<Tickets />} />
         <Route path="/tickets/new" element={<TicketNew />} />
         <Route path="/tickets/:id" element={<TicketDetails />} />
-        <Route path="/team" element={<Team />} />
+        {isAdmin ? (
+          <Route path="/team" element={<Team />} />
+        ) : (
+          <Route path="/team" element={<Navigate to="/dashboard" replace />} />
+        )}
         <Route path="/settings" element={<Settings />} />
       </Route>
 
