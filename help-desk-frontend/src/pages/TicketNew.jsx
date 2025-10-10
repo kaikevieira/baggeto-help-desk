@@ -463,14 +463,14 @@ export default function TicketNew() {
           </div>
         )}
         {/* ESQUERDA — TRANSPORTE */}
-  <section className="rounded-2xl border border-borda p-5 bg-white">
+  <section className="rounded-2xl border border-borda p-5 bg-[var(--color-surface)]">
           <h2 className="mb-4 text-lg font-medium text-titulo">Transporte</h2>
 
           <div className="grid gap-4">
             <div>
               <label className="mb-1 block text-sm text-texto/80">Título</label>
               <input
-                className="w-full rounded-xl border border-borda bg-white px-3 py-2 text-texto focus:outline-none focus:ring-2 focus:ring-azul-claro/30"
+                className="w-full rounded-xl border border-borda bg-[var(--color-surface)] px-3 py-2 text-texto focus:outline-none focus:ring-2 focus:ring-azul-claro/30"
                 value={form.title}
                 onChange={setv("title")}
                 required
@@ -527,7 +527,7 @@ export default function TicketNew() {
                 <input
                   type="text"
                   inputMode="numeric"
-                  className="w-full rounded-xl border border-borda bg-white px-3 py-2 text-texto"
+                  className="w-full rounded-xl border border-borda bg-[var(--color-surface)] px-3 py-2 text-texto"
                   placeholder="R$ 0,00"
                   value={freightValueDisplay}
                   onChange={onChangeFreightValue}
@@ -536,7 +536,7 @@ export default function TicketNew() {
               <div>
                 <label className="mb-1 block text-sm text-texto/80">Prazo para pagamento</label>
                 <input
-                  className="w-full rounded-xl border border-borda bg-white px-3 py-2 text-texto"
+                  className="w-full rounded-xl border border-borda bg-[var(--color-surface)] px-3 py-2 text-texto"
                   placeholder="ex.: à vista, 15 dias, 30 dias"
                   value={form.paymentTerm}
                   onChange={setv("paymentTerm")}
@@ -545,7 +545,7 @@ export default function TicketNew() {
               <div>
                 <label className="mb-1 block text-sm text-texto/80">Tipo de pagamento</label>
                 <input
-                  className="w-full rounded-xl border border-borda bg-white px-3 py-2 text-texto"
+                  className="w-full rounded-xl border border-borda bg-[var(--color-surface)] px-3 py-2 text-texto"
                   placeholder="ex.: PIX, Boleto, TED"
                   value={form.paymentType}
                   onChange={setv("paymentType")}
@@ -560,7 +560,7 @@ export default function TicketNew() {
                   type="number"
                   step="0.001"
                   min="0"
-                  className="w-full rounded-xl border border-borda bg-white px-3 py-2 text-texto"
+                  className="w-full rounded-xl border border-borda bg-[var(--color-surface)] px-3 py-2 text-texto"
                   placeholder="ex.: 28.500"
                   value={form.cargoWeight}
                   onChange={setv("cargoWeight")}
@@ -579,19 +579,19 @@ export default function TicketNew() {
             <div className="grid gap-6 sm:grid-cols-2">
               <div>
                 <label className="mb-1 block text-sm text-texto/80">Placa (Cavalo)</label>
-                <input className="w-full rounded-xl border border-borda bg-white px-3 py-2 text-texto" value={form.plateCavalo} onChange={setv("plateCavalo")} />
+                <input className="w-full rounded-xl border border-borda bg-[var(--color-surface)] px-3 py-2 text-texto" value={form.plateCavalo} onChange={setv("plateCavalo")} />
               </div>
               <div>
                 <label className="mb-1 block text-sm text-texto/80">Placa (1ª carreta)</label>
-                <input className="w-full rounded-xl border border-borda bg-white px-3 py-2 text-texto" value={form.plateCarreta1} onChange={setv("plateCarreta1")} />
+                <input className="w-full rounded-xl border border-borda bg-[var(--color-surface)] px-3 py-2 text-texto" value={form.plateCarreta1} onChange={setv("plateCarreta1")} />
               </div>
               <div>
                 <label className="mb-1 block text-sm text-texto/80">Placa (2ª carreta / Dolly)</label>
-                <input className="w-full rounded-xl border border-borda bg-white px-3 py-2 text-texto" value={form.plateCarreta2} onChange={setv("plateCarreta2")} />
+                <input className="w-full rounded-xl border border-borda bg-[var(--color-surface)] px-3 py-2 text-texto" value={form.plateCarreta2} onChange={setv("plateCarreta2")} />
               </div>
               <div>
                 <label className="mb-1 block text-sm text-texto/80">Placa (3ª carreta)</label>
-                <input className="w-full rounded-xl border border-borda bg-white px-3 py-2 text-texto" value={form.plateCarreta3} onChange={setv("plateCarreta3")} />
+                <input className="w-full rounded-xl border border-borda bg-[var(--color-surface)] px-3 py-2 text-texto" value={form.plateCarreta3} onChange={setv("plateCarreta3")} />
               </div>
             </div>
 
@@ -614,7 +614,7 @@ export default function TicketNew() {
                     <input
                       type="text"
                       inputMode="numeric"
-                      className="w-full rounded-xl border border-borda bg-white px-3 py-2 text-texto"
+                      className="w-full rounded-xl border border-borda bg-[var(--color-surface)] px-3 py-2 text-texto"
                       placeholder="R$ 0,00"
                       value={thirdPartyPaymentDisplay}
                       onChange={onChangeThirdPartyPayment}
@@ -663,7 +663,7 @@ export default function TicketNew() {
             <div>
               <label className="mb-1 block text-sm text-texto/80">Tomador de serviço</label>
                 <input
-                className="w-full rounded-xl border border-borda bg-white px-3 py-2 text-texto"
+                className="w-full rounded-xl border border-borda bg-[var(--color-surface)] px-3 py-2 text-texto"
                 value={form.serviceTaker}
                 onChange={setv("serviceTaker")}
               />
@@ -673,7 +673,7 @@ export default function TicketNew() {
               <div>
                 <label className="mb-1 block text-sm text-texto/80">Representante do CTE</label>
                 <input
-                  className="w-full rounded-xl border border-borda bg-white px-3 py-2 text-texto"
+                  className="w-full rounded-xl border border-borda bg-[var(--color-surface)] px-3 py-2 text-texto"
                   placeholder="Nome do representante"
                   value={form.cteRepresentative}
                   onChange={setv("cteRepresentative")}
@@ -682,7 +682,7 @@ export default function TicketNew() {
               <div>
                 <label className="mb-1 block text-sm text-texto/80">Representante do manifesto</label>
                 <input
-                  className="w-full rounded-xl border border-borda bg-white px-3 py-2 text-texto"
+                  className="w-full rounded-xl border border-borda bg-[var(--color-surface)] px-3 py-2 text-texto"
                   placeholder="Nome do representante"
                   value={form.manifestRepresentative}
                   onChange={setv("manifestRepresentative")}
@@ -693,14 +693,14 @@ export default function TicketNew() {
         </section>
 
         {/* DIREITA — OPERACIONAL */}
-  <section className="rounded-2xl border border-borda p-5 bg-white">
+  <section className="rounded-2xl border border-borda p-5 bg-[var(--color-surface)]">
           <h2 className="mb-4 text-lg font-medium text-titulo">Operacional</h2>
 
           <div className="grid gap-4">
             <div>
               <label className="mb-1 block text-sm text-texto/80">Status</label>
               <select
-                className="w-full rounded-xl border border-borda bg-white px-3 py-2 text-texto"
+                className="custom-select w-full rounded-xl border border-borda bg-[var(--color-surface)] px-3 py-2 text-texto"
                 value={form.status}
                 onChange={setv("status")}
               >
@@ -713,7 +713,7 @@ export default function TicketNew() {
             <div>
               <label className="mb-1 block text-sm text-texto/80">Prioridade</label>
               <select
-                className="w-full rounded-xl border border-borda bg-white px-3 py-2 text-texto"
+                className="custom-select w-full rounded-xl border border-borda bg-[var(--color-surface)] px-3 py-2 text-texto"
                 value={form.priority}
                 onChange={setv("priority")}
               >
@@ -728,7 +728,7 @@ export default function TicketNew() {
               <label className="mb-1 block text-sm text-texto/80">Descrição</label>
               <textarea
                 rows={8}
-                className="w-full rounded-xl border border-borda bg-white px-3 py-2 text-texto"
+                className="w-full rounded-xl border border-borda bg-[var(--color-surface)] px-3 py-2 text-texto"
                 value={form.description}
                 onChange={setv("description")}
                 required
