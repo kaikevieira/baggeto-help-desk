@@ -4,6 +4,7 @@ import { listUsers, createUser, updateUser } from "../api/users";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useNavigate } from "react-router-dom";
 import Button from "../components/Button";
+import { sendTestEmailToUser } from "../api/notifications.test";
 import { usePageTitle } from "../hooks/usePageTitle";
 
 const RoleBadge = ({ role }) => {
@@ -41,6 +42,7 @@ const SkeletonRow = () => (
 function UserModal({ open, onClose, onSave, initial }) {
   const isEdit = Boolean(initial?.id);
   const [username, setUsername] = useState(initial?.username || "");
+  const [email, setEmail] = useState(initial?.email || "");
   const [role, setRole] = useState(initial?.role || "USER");
   const [password, setPassword] = useState("");
   const [saving, setSaving] = useState(false);
@@ -49,6 +51,7 @@ function UserModal({ open, onClose, onSave, initial }) {
   useEffect(() => {
     if (open) {
       setUsername(initial?.username || "");
+      setEmail(initial?.email || "");
       setRole(initial?.role || "USER");
       setPassword("");
       setError("");
@@ -65,6 +68,7 @@ function UserModal({ open, onClose, onSave, initial }) {
     try {
       await onSave({
         username,
+        email: email || undefined,
         role,
         password: isEdit ? password || undefined : password, // no edit, senha é opcional
       });
@@ -96,6 +100,17 @@ function UserModal({ open, onClose, onSave, initial }) {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm text-texto/80">E-mail (opcional)</label>
+            <input
+              type="email"
+              className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto focus:outline-none focus:ring-2 focus:ring-azul-claro/30"
+              placeholder="nome@empresa.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
             />
           </div>
 
@@ -168,6 +183,7 @@ export default function Team() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null); // objeto user ou null
   const [flash, setFlash] = useState("");
+  const [testingIds, setTestingIds] = useState(new Set());
 
   useEffect(() => {
     (async () => {
@@ -206,19 +222,37 @@ export default function Team() {
     setModalOpen(true);
   };
 
-  const saveUser = async ({ username, role, password }) => {
+  const saveUser = async ({ username, email, role, password }) => {
     if (editing) {
-      const updated = await updateUser(editing.id, { username, role, password });
+      const updated = await updateUser(editing.id, { username, email, role, password });
       setUsers((prev) => prev.map((u) => (u.id === editing.id ? updated : u)));
       setFlash("Usuário atualizado com sucesso.");
       setTimeout(() => setFlash(""), 3000);
     } else {
-      const created = await createUser({ username, role, password });
+      const created = await createUser({ username, email, role, password });
       setUsers((prev) => [created, ...prev]);
       setFlash("Usuário criado com sucesso.");
       setTimeout(() => setFlash(""), 3000);
     }
   };
+
+  async function testEmail(u) {
+    try {
+      if (!u.email) {
+        setFlash(`Usuário ${u.username} não possui e-mail cadastrado.`);
+        setTimeout(() => setFlash(""), 3000);
+        return;
+      }
+      setTestingIds(prev => new Set(prev).add(u.id));
+      await sendTestEmailToUser(u.id);
+      setFlash(`E-mail de teste enviado para ${u.email}.`);
+    } catch (e) {
+      setFlash(e?.message || 'Falha ao enviar e-mail de teste.');
+    } finally {
+      setTimeout(() => setFlash(""), 3000);
+      setTestingIds(prev => { const n = new Set(prev); n.delete(u.id); return n; });
+    }
+  }
 
   if (user?.role !== "ADMIN") {
     return (
@@ -306,7 +340,7 @@ export default function Team() {
                       </div>
                       <div className="min-w-0">
                         <div className="truncate text-texto">{u.username}</div>
-                        <div className="text-xs text-texto/60">ID: {u.id}</div>
+                        <div className="text-xs text-texto/60">{u.email || 'sem e-mail'} • ID: {u.id}</div>
                       </div>
                     </div>
                   </td>
@@ -315,12 +349,20 @@ export default function Team() {
                     {new Date(u.createdAt).toLocaleString()}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex justify-end">
+                    <div className="flex justify-end gap-2">
                       <button
                         className="rounded-lg border border-borda px-3 py-1 text-xs text-texto hover:bg-white/5"
                         onClick={() => openEdit(u)}
                       >
                         Editar
+                      </button>
+                      <button
+                        className="rounded-lg border border-azul-claro/40 bg-azul-claro/10 px-3 py-1 text-xs text-azul-claro hover:bg-azul-claro/20 disabled:opacity-50"
+                        onClick={() => testEmail(u)}
+                        disabled={testingIds.has(u.id)}
+                        title="Enviar e-mail de teste"
+                      >
+                        {testingIds.has(u.id) ? 'Enviando…' : 'Testar e-mail'}
                       </button>
                     </div>
                   </td>
