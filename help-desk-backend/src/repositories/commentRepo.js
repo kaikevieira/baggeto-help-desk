@@ -6,7 +6,7 @@ export const commentRepo = {
   listByTicket: (ticketId) =>
     prisma.comment.findMany({
       where: { ticketId },
-      include: { author: { select: { id: true, username: true } } },
+      include: { author: { select: { id: true, username: true, fullName: true } } },
       orderBy: { createdAt: 'asc' }
     })
 };
