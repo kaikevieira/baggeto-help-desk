@@ -42,6 +42,7 @@ const SkeletonRow = () => (
 function UserModal({ open, onClose, onSave, initial }) {
   const isEdit = Boolean(initial?.id);
   const [username, setUsername] = useState(initial?.username || "");
+  const [fullName, setFullName] = useState(initial?.fullName || "");
   const [email, setEmail] = useState(initial?.email || "");
   const [role, setRole] = useState(initial?.role || "USER");
   const [password, setPassword] = useState("");
@@ -51,6 +52,7 @@ function UserModal({ open, onClose, onSave, initial }) {
   useEffect(() => {
     if (open) {
       setUsername(initial?.username || "");
+      setFullName(initial?.fullName || "");
       setEmail(initial?.email || "");
       setRole(initial?.role || "USER");
       setPassword("");
@@ -68,6 +70,7 @@ function UserModal({ open, onClose, onSave, initial }) {
     try {
       await onSave({
         username,
+        fullName: fullName || undefined,
         email: email || undefined,
         role,
         password: isEdit ? password || undefined : password, // no edit, senha é opcional
@@ -100,6 +103,16 @@ function UserModal({ open, onClose, onSave, initial }) {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm text-texto/80">Nome completo</label>
+            <input
+              className="w-full rounded-xl border border-borda bg-transparent px-3 py-2 text-texto focus:outline-none focus:ring-2 focus:ring-azul-claro/30"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Ex.: Maria dos Santos"
             />
           </div>
 
@@ -339,8 +352,8 @@ export default function Team() {
                         {u.username?.[0]?.toUpperCase() || "U"}
                       </div>
                       <div className="min-w-0">
-                        <div className="truncate text-texto">{u.username}</div>
-                        <div className="text-xs text-texto/60">{u.email || 'sem e-mail'} • ID: {u.id}</div>
+                        <div className="truncate text-texto">{u.fullName || u.username}</div>
+                        <div className="text-xs text-texto/60">{u.username} • {u.email || 'sem e-mail'} • ID: {u.id}</div>
                       </div>
                     </div>
                   </td>

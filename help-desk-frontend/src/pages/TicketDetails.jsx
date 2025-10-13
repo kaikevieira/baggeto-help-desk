@@ -307,15 +307,15 @@ export default function TicketDetails() {
                     <span className="w-2 h-2 bg-azul-claro rounded-full"></span>
                     Ticket #{ticket.id}
                   </span>
-                  <span className="truncate min-w-0">Criado por <strong className="text-texto">{ticket.createdBy?.username}</strong></span>
+                  <span className="truncate min-w-0">Criado por <strong className="text-texto">{ticket.createdBy?.fullName || ticket.createdBy?.username}</strong></span>
                   <span className="whitespace-nowrap flex-shrink-0">em {new Date(ticket.createdAt).toLocaleDateString('pt-BR')}</span>
                   {(ticket.assignedTo || (ticket.assignees && ticket.assignees.length)) && (
                     <span className="truncate min-w-0">
                       Atribuído para
                       <strong className="text-texto"> {
                         [
-                          ...(ticket.assignedTo ? [ticket.assignedTo.username] : []),
-                          ...((ticket.assignees || []).map(a => a.user?.username).filter(Boolean))
+                          ...(ticket.assignedTo ? [ticket.assignedTo.fullName || ticket.assignedTo.username] : []),
+                          ...((ticket.assignees || []).map(a => (a.user?.fullName || a.user?.username)).filter(Boolean))
                         ].join(', ')
                       } </strong>
                     </span>

@@ -86,7 +86,7 @@ export default function Sidebar({
       <div className="mb-6 px-2">
         <p className="text-xs text-texto/60">Logado como</p>
         <p className="truncate text-sm font-medium text-titulo">
-          {user?.username ?? "—"}
+          {user?.fullName || user?.username || "—"}
         </p>
       </div>
 

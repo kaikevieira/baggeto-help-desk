@@ -61,7 +61,7 @@ export default function Tickets() {
       id: t.id,
       ticketNumber: t.ticketNumber,
       title: t.title,
-      assignedTo: t.assignedTo?.username || '-',
+      assignedTo: (t.assignedTo?.fullName || t.assignedTo?.username) || '-',
       assignees: [
         ...(t.assignedTo ? [t.assignedTo] : []),
         ...((t.assignees || []).map(a => a.user))

@@ -28,7 +28,7 @@ export default function TicketsTable({ tickets = [], onView }) {
                   <div className="flex flex-wrap gap-1">
                     {t.assignees.map((u) => (
                       <span key={u.id} className="px-2 py-0.5 text-xs rounded-md bg-azul-claro/20 text-azul-claro border border-azul-claro/30">
-                        {u.username}
+                        {u.fullName || u.username}
                       </span>
                     ))}
                   </div>

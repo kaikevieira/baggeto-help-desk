@@ -26,12 +26,17 @@ export default function MultiUserSelect({ label = "Atribuir para (múltiplos)", 
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    return users.filter((u) => !selectedIds.has(u.id) && (!needle || u.username.toLowerCase().includes(needle)));
+    return users.filter((u) => {
+      if (selectedIds.has(u.id)) return false;
+      if (!needle) return true;
+      const name = (u.fullName || u.username || '').toLowerCase();
+      return name.includes(needle);
+    });
   }, [users, q, selectedIds]);
 
   function addUser(u) {
     if (!onChange) return;
-    const next = [...(value || []), { id: u.id, username: u.username, role: u.role }];
+    const next = [...(value || []), { id: u.id, username: u.username, fullName: u.fullName, role: u.role }];
     onChange(next);
     setQ("");
   }
@@ -49,8 +54,8 @@ export default function MultiUserSelect({ label = "Atribuir para (múltiplos)", 
         <div className="flex flex-wrap gap-2 mb-2">
           {(value || []).map((u) => (
             <span key={u.id} className="inline-flex items-center gap-2 rounded-full border border-borda px-3 py-1 text-sm">
-              {u.username}
-              <button type="button" className="text-texto/60 hover:text-red-400 disabled:opacity-50" onClick={() => removeUser(u.id)} aria-label={`Remover ${u.username}`} disabled={disabled}>×</button>
+              {u.fullName || u.username}
+              <button type="button" className="text-texto/60 hover:text-red-400 disabled:opacity-50" onClick={() => removeUser(u.id)} aria-label={`Remover ${u.fullName || u.username}`} disabled={disabled}>×</button>
             </span>
           ))}
         </div>
@@ -71,7 +76,7 @@ export default function MultiUserSelect({ label = "Atribuir para (múltiplos)", 
                 className="block w-full text-left px-3 py-2 hover:bg-borda/20"
                 onClick={() => addUser(u)}
               >
-                {u.username} ({u.role === 'ADMIN' ? 'Admin' : 'Usuário'})
+                {u.fullName || u.username}
               </button>
             ))}
           </div>
