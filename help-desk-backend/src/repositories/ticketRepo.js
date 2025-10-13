@@ -7,10 +7,10 @@ export const ticketRepo = {
     prisma.ticket.findUnique({
       where: { id },
       include: {
-        createdBy: { select: { id: true, username: true } },
-        assignedTo: { select: { id: true, username: true } },
+        createdBy: { select: { id: true, username: true, fullName: true } },
+        assignedTo: { select: { id: true, username: true, fullName: true } },
         comments: {
-          include: { author: { select: { id: true, username: true } } },
+          include: { author: { select: { id: true, username: true, fullName: true } } },
           orderBy: { createdAt: 'asc' }
         }
       }
@@ -43,8 +43,8 @@ export const ticketRepo = {
         skip,
         take: pageSize,
         include: {
-          createdBy: { select: { id: true, username: true } },
-          assignedTo: { select: { id: true, username: true } }
+          createdBy: { select: { id: true, username: true, fullName: true } },
+          assignedTo: { select: { id: true, username: true, fullName: true } }
         }
       })
     ]);
