@@ -38,7 +38,7 @@ export const authController = {
       const baseCookie = {
         httpOnly: true,
         secure: isProd || ENV.COOKIE_SECURE, // exige HTTPS quando em produção
-        sameSite: isProd ? (isIOS ? 'strict' : 'none') : 'lax',   // strict para iOS em prod
+        sameSite: isIOS ? 'strict' : (isProd ? 'none' : 'lax'), // sempre strict para iOS
         path: '/',
         domain: isIOS ? undefined : domain, // Remove domain para iOS
       };
@@ -69,7 +69,7 @@ export const authController = {
       const baseCookie = {
         httpOnly: true,
         secure: isProd || ENV.COOKIE_SECURE,
-        sameSite: isProd ? (isIOS ? 'strict' : 'none') : 'lax',
+        sameSite: isIOS ? 'strict' : (isProd ? 'none' : 'lax'), // sempre strict para iOS
         path: '/',
         domain: isIOS ? undefined : domain,
       };

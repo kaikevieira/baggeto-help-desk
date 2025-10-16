@@ -83,10 +83,15 @@ export function AuthProvider({ children }) {
     (async () => {
       try {
         // Timeout mais longo para iOS devido a possível latência
-        const timeoutDuration = isIOS ? 15000 : 10000;
+        const timeoutDuration = isIOS ? 20000 : 10000;
         timeoutId = setTimeout(() => {
           setInitializing(false);
         }, timeoutDuration);
+
+        // Delay específico para iOS para garantir que cookies sejam processados
+        if (isIOS) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
 
         // Log device info for debugging
         
@@ -149,6 +154,20 @@ export function AuthProvider({ children }) {
         setUser(u);
         localStorage.setItem("auth_user", JSON.stringify(u));
         setAuthRetryCount(0); // Reset retry count on successful login
+        
+        // Delay específico para iOS para garantir que cookies sejam definidos
+        if (isIOS) {
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          // Verifica se o usuário ainda está válido após o delay
+          try {
+            await apiMe();
+          } catch (verifyError) {
+            // Se falhar, tenta refresh uma vez
+            await apiRefresh();
+          }
+        }
+        
         console.log(`Login successful (${deviceInfo.isIOS ? 'iOS' : 'other'})`);
         return u;
       } catch (error) {
