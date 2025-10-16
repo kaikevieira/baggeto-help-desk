@@ -4,16 +4,31 @@ export const BASE_URL = "https://free-sarajane-kaikevieira-4a44ef78.koyeb.app";
 let isRefreshing = false;
 let refreshPromise = null;
 
+// Função para detectar iOS
+const isIOSDevice = () => {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+};
+
 async function refreshToken() {
   if (isRefreshing && refreshPromise) {
     return refreshPromise;
   }
   
   isRefreshing = true;
+  const isIOS = isIOSDevice();
+  
   refreshPromise = fetch(`${BASE_URL}/auth/refresh`, {
     method: "POST",
     credentials: "include",
-    headers: { "Content-Type": "application/json" }
+    headers: { 
+      "Content-Type": "application/json",
+      // Headers específicos para iOS
+      ...(isIOS && {
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache"
+      })
+    }
   });
 
   try {
@@ -36,10 +51,20 @@ export async function apiFetch(path, { method = "GET", headers = {}, body, param
     });
   }
 
+  const isIOS = isIOSDevice();
+  
   const opts = {
     method,
     credentials: "include", // envia cookies httpOnly
-    headers: { "Content-Type": "application/json", ...headers },
+    headers: { 
+      "Content-Type": "application/json", 
+      // Headers específicos para iOS
+      ...(isIOS && {
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache"
+      }),
+      ...headers 
+    },
   };
 
   if (idempotencyKey && typeof idempotencyKey === 'string') {
