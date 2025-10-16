@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   FiHome,
   FiList,
@@ -6,14 +6,17 @@ import {
   FiUsers,
   FiSettings,
   FiLogOut,
+  FiMenu,
+  FiX,
 } from "react-icons/fi";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
+// import { useMobileMenu } from "../hooks/useMobileMenu.js";
 
 const NavItem = ({ icon: Icon, label, active = false, onClick }) => (
   <button
     onClick={onClick}
-    className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition-all duration-300 ease-in-out transform hover:scale-[1.02]
+    className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition-all duration-300 ease-in-out transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-azul-claro/50
       ${
         active 
           ? "bg-azul-claro/15 text-titulo border border-azul-claro/60 shadow-lg shadow-azul-claro/10" 
@@ -45,9 +48,50 @@ export default function Sidebar({
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  // const mobileMenu = useMobileMenu();
+  
+  // Estado local para controlar o menu mobile
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Fecha o menu mobile quando a rota muda
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
+
+  // Previne scroll do body quando menu está aberto
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isMobileMenuOpen]);
+
+  // Fecha o menu ao pressionar ESC
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' && isMobileMenuOpen) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isMobileMenuOpen]);
 
   // Navega usando prop se vier do layout; senão, usa o router direto
-  const go = (to) => (onNavigate ? onNavigate(to) : navigate(to));
+  const go = (to) => {
+    if (onNavigate) {
+      onNavigate(to);
+    } else {
+      navigate(to);
+    }
+    setIsMobileMenuOpen(false); // Fecha o menu mobile após navegação
+  };
 
   // Destaca automaticamente com base na URL atual
   const isActive = (match) => {
@@ -65,10 +109,10 @@ export default function Sidebar({
     }
   };
 
-  return (
-    <aside className="sticky top-0 hidden h-screen w-72 flex-col border-r border-borda p-4 md:flex" style={{ backgroundColor: 'var(--color-sidebar)' }}>
+  const SidebarContent = () => (
+    <>
       {/* Logo */}
-  <div className="mb-4 flex items-center gap-3 px-2 group cursor-pointer transition-all duration-300 hover:scale-105">
+      <div className="mb-4 flex items-center gap-3 px-2 group cursor-pointer transition-all duration-300 hover:scale-105">
         <img
           src="/logo.png"
           alt="Transportes Baggeto"
@@ -138,6 +182,59 @@ export default function Sidebar({
           <span className="font-medium">Sair</span>
         </button>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Botão Menu Hambúrguer - Visível apenas em mobile */}
+      <button
+        onClick={() => {
+          setIsMobileMenuOpen(!isMobileMenuOpen);
+        }}
+        className={`fixed top-4 left-4 z-50 flex items-center justify-center h-12 w-12 rounded-xl bg-azul-claro text-white shadow-lg border border-azul-claro/20 md:hidden transition-all duration-300 ease-in-out transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-azul-claro/50 ${
+          isMobileMenuOpen ? 'rotate-180' : 'rotate-0'
+        }`}
+        aria-label={isMobileMenuOpen ? "Fechar menu" : "Abrir menu"}
+        aria-expanded={isMobileMenuOpen}
+      >
+        <div className="relative">
+          <FiMenu className={`h-6 w-6 transition-all duration-300 ${isMobileMenuOpen ? 'opacity-0 rotate-180' : 'opacity-100 rotate-0'}`} />
+          <FiX className={`h-6 w-6 absolute inset-0 transition-all duration-300 ${isMobileMenuOpen ? 'opacity-100 rotate-0' : 'opacity-0 -rotate-180'}`} />
+        </div>
+      </button>
+
+      {/* Overlay para mobile */}
+      <div 
+        className={`fixed inset-0 bg-black/50 z-30 md:hidden transition-opacity duration-300 ease-in-out ${
+          isMobileMenuOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={() => {
+          setIsMobileMenuOpen(false);
+        }}
+        aria-hidden="true"
+      />
+
+      {/* Sidebar Desktop */}
+      <aside 
+        className="fixed top-0 left-0 hidden h-screen w-72 flex-col border-r border-borda p-4 md:flex z-20" 
+        style={{ backgroundColor: 'var(--color-sidebar)' }}
+      >
+        <SidebarContent />
+      </aside>
+
+      {/* Sidebar Mobile */}
+      <aside 
+        className={`mobile-sidebar fixed top-0 left-0 z-40 h-screen w-72 flex flex-col border-r border-borda p-4 md:hidden transition-all duration-300 ease-in-out ${
+          isMobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full shadow-none'
+        }`}
+        style={{ backgroundColor: 'var(--color-sidebar)' }}
+        onClick={(e) => e.stopPropagation()}
+        role="navigation"
+        aria-label="Menu de navegação principal"
+      >
+        <SidebarContent />
+      </aside>
+    </>
   );
 }
