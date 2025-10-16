@@ -20,6 +20,16 @@ const isIOSDevice = () => {
          (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 };
 
+// Função de fetch com timeout para iOS
+const fetchWithTimeout = (url, options, timeout = 30000) => {
+  return Promise.race([
+    fetch(url, options),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Request timeout')), timeout)
+    )
+  ]);
+};
+
 async function refreshToken() {
   if (isRefreshing && refreshPromise) {
     return refreshPromise;
