@@ -85,31 +85,25 @@ export function AuthProvider({ children }) {
         // Timeout mais longo para iOS devido a possível latência
         const timeoutDuration = isIOS ? 15000 : 10000;
         timeoutId = setTimeout(() => {
-          console.warn(`Auth initialization timeout (${deviceInfo.isIOS ? 'iOS' : 'other'})`);
           setInitializing(false);
         }, timeoutDuration);
 
         // Log device info for debugging
-        console.log('Auth initializing:', deviceInfo);
-
+        
         // Se já tem usuário no localStorage, verifica se é válido
         if (user) {
           try {
             // Tenta fazer uma requisição para verificar se token ainda é válido
             await apiMe();
             // Se chegou aqui, token é válido, não precisa fazer nada
-            console.log('Existing token is valid');
           } catch (error) {
-            console.log('Existing token invalid, trying refresh');
             // Token inválido, tenta refresh
             try {
               await apiRefresh();
               const { user: userData } = await apiMe();
               setUser(userData);
               localStorage.setItem("auth_user", JSON.stringify(userData));
-              console.log('Token refreshed successfully');
             } catch (refreshError) {
-              console.warn('Refresh failed, clearing auth:', refreshError.message);
               // Refresh falhou, remove dados inválidos
               localStorage.removeItem("auth_user");
               setUser(null);
@@ -122,16 +116,13 @@ export function AuthProvider({ children }) {
             const { user: userData } = await apiMe();
             setUser(userData);
             localStorage.setItem("auth_user", JSON.stringify(userData));
-            console.log('Session restored from cookies');
           } catch (_) {
             // Sem sessão válida, garante que localStorage está limpo
             localStorage.removeItem("auth_user");
             setUser(null);
-            console.log('No valid session found');
           }
         }
       } catch (error) {
-        console.error('Auth initialization error:', error);
         // Em caso de erro não esperado, limpa estado
         localStorage.removeItem("auth_user");
         setUser(null);

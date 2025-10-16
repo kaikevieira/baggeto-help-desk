@@ -28,7 +28,7 @@ export default function Login() {
         if (!initializing && user) {
             navigate(from, { replace: true });
         }
-    }, [user, initializing, navigate, from]);
+    }, [initializing, user, navigate, from]);
 
     // Mostra loading enquanto AuthContext está inicializando
     if (initializing) {
@@ -156,6 +156,7 @@ export default function Login() {
                     </Button>
                 </form>
             </AuthCard>
+            
             <footer className="fixed inset-x-0 bottom-4 flex justify-center px-4">
                 <p className="text-xs sm:text-sm text-texto/70">
                     Feito com <FiHeart className="inline align-middle text-[var(--color-vermelho)] mx-1" aria-label="amor" /> por
