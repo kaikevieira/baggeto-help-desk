@@ -2,7 +2,7 @@
 const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 export const BASE_URL = isDevelopment 
   ? "http://localhost:4000" 
-  : "https://free-sarajane-kaikevieira-4a44ef78.koyeb.app";
+  : "https://api.chamados.transportesbaggeto.com.br";
 
 console.log('🌐 Environment detected:', { 
   isDevelopment, 
