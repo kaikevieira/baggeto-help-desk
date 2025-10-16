@@ -38,9 +38,9 @@ export const authController = {
       const baseCookie = {
         httpOnly: true,
         secure: isProd || ENV.COOKIE_SECURE, // exige HTTPS quando em produção
-        sameSite: isIOS ? 'none' : (isProd ? 'none' : 'lax'), // none para iOS em CORS
+        sameSite: 'lax', // lax funciona melhor para same-domain
         path: '/',
-        domain: undefined, // Remove domain para melhor compatibilidade iOS
+        domain: '.transportesbaggeto.com.br', // Domain compartilhado para subdomínios
       };
       
       res
@@ -69,9 +69,9 @@ export const authController = {
       const baseCookie = {
         httpOnly: true,
         secure: isProd || ENV.COOKIE_SECURE,
-        sameSite: isIOS ? 'none' : (isProd ? 'none' : 'lax'), // none para iOS em CORS
+        sameSite: 'lax', // lax funciona melhor para same-domain
         path: '/',
-        domain: undefined, // Remove domain para melhor compatibilidade iOS
+        domain: '.transportesbaggeto.com.br', // Domain compartilhado para subdomínios
       };
       
   res.cookie('access_token', accessToken, { ...baseCookie, maxAge: 1000 * 60 * 15 }).json({ ok: true });

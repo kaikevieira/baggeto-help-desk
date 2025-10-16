@@ -10,9 +10,9 @@ export const cookieTestController = {
     const testCookie = {
       httpOnly: true,
       secure: isProd || ENV.COOKIE_SECURE,
-      sameSite: isIOS ? 'none' : (isProd ? 'none' : 'lax'), // none para iOS
+      sameSite: 'lax', // lax para same-domain
       path: '/',
-      domain: undefined, // Remove domain para melhor compatibilidade
+      domain: '.transportesbaggeto.com.br', // Domain compartilhado
       maxAge: 1000 * 60 * 5 // 5 minutos
     };
     

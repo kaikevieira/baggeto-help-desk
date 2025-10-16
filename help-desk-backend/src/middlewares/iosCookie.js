@@ -12,8 +12,8 @@ export const iosCookieMiddleware = (req, res, next) => {
         ...options,
         httpOnly: true,
         secure: true, // Forçar secure para iOS
-        sameSite: 'none', // none é necessário para CORS no iOS
-        domain: undefined, // Remove domain
+        sameSite: 'lax', // lax para same-domain no iOS
+        domain: '.transportesbaggeto.com.br', // Domain compartilhado
         path: '/'
       };
       
