@@ -21,6 +21,8 @@ export function AuthProvider({ children }) {
   });
   const [initializing, setInitializing] = useState(true);
   const [authRetryCount, setAuthRetryCount] = useState(0);
+  const [iosAuthComplete, setIosAuthComplete] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
   const refreshTimerRef = useRef(null);
   const isIOS = isIOSDevice();
   const deviceInfo = { isIOS, isSafari: isSafari() };
@@ -96,8 +98,14 @@ export function AuthProvider({ children }) {
         // Log device info for debugging
         
         // Se já tem usuário no localStorage, verifica se é válido
-        if (user) {
+        if (user && !isValidating) {
+          setIsValidating(true);
           try {
+            // Para iOS, aguarda mais tempo antes de validar
+            if (isIOS) {
+              await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+            
             // Tenta fazer uma requisição para verificar se token ainda é válido
             await apiMe();
             // Se chegou aqui, token é válido, não precisa fazer nada
@@ -109,12 +117,30 @@ export function AuthProvider({ children }) {
               setUser(userData);
               localStorage.setItem("auth_user", JSON.stringify(userData));
             } catch (refreshError) {
-              // Refresh falhou, remove dados inválidos
-              localStorage.removeItem("auth_user");
-              setUser(null);
+              // Para iOS, tenta mais uma vez após delay
+              if (isIOS && authRetryCount < 2) {
+                setAuthRetryCount(prev => prev + 1);
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                try {
+                  await apiRefresh();
+                  const { user: userData } = await apiMe();
+                  setUser(userData);
+                  localStorage.setItem("auth_user", JSON.stringify(userData));
+                } catch (finalError) {
+                  // Refresh falhou definitivamente, remove dados inválidos
+                  localStorage.removeItem("auth_user");
+                  setUser(null);
+                }
+              } else {
+                // Refresh falhou, remove dados inválidos
+                localStorage.removeItem("auth_user");
+                setUser(null);
+              }
             }
+          } finally {
+            setIsValidating(false);
           }
-        } else {
+        } else if (!user) {
           // Não tem usuário, tenta verificar se há sessão válida
           try {
             await apiRefresh();
@@ -134,6 +160,10 @@ export function AuthProvider({ children }) {
       } finally {
         clearTimeout(timeoutId);
         setInitializing(false);
+        // Marca que o iOS terminou o processo de autenticação
+        if (isIOS) {
+          setTimeout(() => setIosAuthComplete(true), 1000);
+        }
       }
     })();
 
@@ -147,7 +177,7 @@ export function AuthProvider({ children }) {
 
   const value = useMemo(() => ({
     user,
-    initializing,
+    initializing: initializing || (isIOS && !iosAuthComplete),
     async login(username, password) {
       try {
         const { user: u } = await apiLogin(username, password);
@@ -198,7 +228,7 @@ export function AuthProvider({ children }) {
       localStorage.setItem("auth_user", JSON.stringify(updated));
       return updated;
     }
-  }), [user, initializing]);
+  }), [user, initializing, iosAuthComplete, isIOS]);
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }
