@@ -26,18 +26,23 @@ export const authController = {
     try {
   const { accessToken, refreshToken, user } = await authService.login(req.body);
 
-      // cookies httpOnly
+      // cookies httpOnly com configurações específicas para iOS
       const isProd = ENV.NODE_ENV === 'production';
+      const userAgent = req.headers['user-agent'] || '';
+      const isIOS = userAgent.includes('iPhone') || userAgent.includes('iPad') || userAgent.includes('iPod');
+      
       // Domínio do cookie só deve ser definido se pertencer ao próprio host da API
       const cookieDomain = ENV.COOKIE_DOMAIN;
       const domain = cookieDomain && req.hostname.endsWith(cookieDomain) ? cookieDomain : undefined;
+      
       const baseCookie = {
         httpOnly: true,
         secure: isProd || ENV.COOKIE_SECURE, // exige HTTPS quando em produção
-        sameSite: isProd ? 'none' : 'lax',   // para permitir cross-site em prod
+        sameSite: isProd ? (isIOS ? 'strict' : 'none') : 'lax',   // strict para iOS em prod
         path: '/',
-        domain,
+        domain: isIOS ? undefined : domain, // Remove domain para iOS
       };
+      
       res
         .cookie('access_token', accessToken, { ...baseCookie, maxAge: 1000 * 60 * 15 })
         .cookie('refresh_token', refreshToken, { ...baseCookie, maxAge: 1000 * 60 * 60 * 24 * 7 })
@@ -55,15 +60,20 @@ export const authController = {
   const { accessToken } = await authService.refresh(refreshToken);
 
       const isProd = ENV.NODE_ENV === 'production';
+      const userAgent = req.headers['user-agent'] || '';
+      const isIOS = userAgent.includes('iPhone') || userAgent.includes('iPad') || userAgent.includes('iPod');
+      
       const cookieDomain = ENV.COOKIE_DOMAIN;
       const domain = cookieDomain && req.hostname.endsWith(cookieDomain) ? cookieDomain : undefined;
+      
       const baseCookie = {
         httpOnly: true,
         secure: isProd || ENV.COOKIE_SECURE,
-        sameSite: isProd ? 'none' : 'lax',
+        sameSite: isProd ? (isIOS ? 'strict' : 'none') : 'lax',
         path: '/',
-        domain,
+        domain: isIOS ? undefined : domain,
       };
+      
   res.cookie('access_token', accessToken, { ...baseCookie, maxAge: 1000 * 60 * 15 }).json({ ok: true });
     } catch (e) {
       next(e);
@@ -76,15 +86,20 @@ export const authController = {
       await authService.logout(refreshToken);
 
       const isProd = ENV.NODE_ENV === 'production';
+      const userAgent = req.headers['user-agent'] || '';
+      const isIOS = userAgent.includes('iPhone') || userAgent.includes('iPad') || userAgent.includes('iPod');
+      
       const cookieDomain = ENV.COOKIE_DOMAIN;
       const domain = cookieDomain && req.hostname.endsWith(cookieDomain) ? cookieDomain : undefined;
+      
       const clearOpts = {
         httpOnly: true,
         secure: isProd || ENV.COOKIE_SECURE,
-        sameSite: isProd ? 'none' : 'lax',
+        sameSite: isProd ? (isIOS ? 'strict' : 'none') : 'lax',
         path: '/',
-        domain,
+        domain: isIOS ? undefined : domain,
       };
+      
       res.clearCookie('access_token', clearOpts);
       res.clearCookie('refresh_token', clearOpts);
       res.json({ ok: true });
