@@ -318,7 +318,8 @@ export default function Team() {
         </div>
       )}
 
-      <div className="overflow-hidden rounded-2xl border border-borda" style={{ backgroundColor: 'var(--color-surface)' }}>
+      {/* Tabela Desktop */}
+      <div className="hidden lg:block overflow-hidden rounded-2xl border border-borda" style={{ backgroundColor: 'var(--color-surface)' }}>
         <table className="min-w-full divide-y divide-borda/70">
           <thead className="text-xs uppercase tracking-wide text-texto" style={{ backgroundColor: 'var(--color-surface)' }}>
             <tr>
@@ -387,6 +388,102 @@ export default function Team() {
 
         {error && (
           <div className="p-3 text-sm text-red-300">{error}</div>
+        )}
+      </div>
+
+      {/* Cards Mobile/Tablet */}
+      <div className="lg:hidden">
+        {loading ? (
+          <div className="space-y-4">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="rounded-2xl border border-borda p-4 animate-pulse" style={{ backgroundColor: 'var(--color-surface)' }}>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="h-10 w-10 rounded-lg bg-borda"></div>
+                  <div className="flex-1">
+                    <div className="h-4 bg-borda rounded mb-1"></div>
+                    <div className="h-3 bg-borda/70 rounded w-2/3"></div>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <div className="h-6 bg-borda rounded w-16"></div>
+                  <div className="h-6 bg-borda rounded w-20"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="rounded-2xl border border-borda p-8 text-center text-texto/70" style={{ backgroundColor: 'var(--color-surface)' }}>
+            Nenhum usuário encontrado.
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filtered.map((u, idx) => (
+              <div 
+                key={u.id} 
+                className="rounded-2xl border border-borda p-4 transition-all duration-200 hover:shadow-md hover:border-azul-claro/30" 
+                style={{ backgroundColor: 'var(--color-surface)' }}
+              >
+                {/* Header do Card */}
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="grid h-10 w-10 place-items-center rounded-lg border border-borda text-lg font-medium text-titulo" style={{ backgroundColor: 'var(--color-surface)' }}>
+                      {u.username?.[0]?.toUpperCase() || "U"}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-texto/60 text-xs font-medium">#{idx + 1}</span>
+                        <RoleBadge role={u.role} />
+                      </div>
+                      <h3 className="text-titulo font-medium text-base truncate">
+                        {u.fullName || u.username}
+                      </h3>
+                      <p className="text-xs text-texto/60 truncate">
+                        @{u.username} • {u.email || 'sem e-mail'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Informações do Card */}
+                <div className="space-y-2 mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-texto/60 text-xs font-medium min-w-[60px]">ID:</span>
+                    <span className="text-texto/70 text-xs font-mono">#{u.id}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-texto/60 text-xs font-medium min-w-[60px]">Criado:</span>
+                    <span className="text-texto/70 text-xs">
+                      {new Date(u.createdAt).toLocaleDateString('pt-BR')}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Ações do Card */}
+                <div className="flex gap-2 pt-2 border-t border-borda/50">
+                  <button
+                    className="flex-1 rounded-lg border border-borda px-3 py-2 text-sm text-texto hover:bg-white/5 transition-colors"
+                    onClick={() => openEdit(u)}
+                  >
+                    Editar
+                  </button>
+                  <button
+                    className="flex-1 rounded-lg border border-azul-claro/40 bg-azul-claro/10 px-3 py-2 text-sm text-azul-claro hover:bg-azul-claro/20 disabled:opacity-50 transition-colors"
+                    onClick={() => testEmail(u)}
+                    disabled={testingIds.has(u.id)}
+                    title="Enviar e-mail de teste"
+                  >
+                    {testingIds.has(u.id) ? 'Enviando…' : 'Testar e-mail'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {error && (
+          <div className="mt-4 p-3 text-sm text-red-300 rounded-lg border border-red-500/30 bg-red-500/10">
+            {error}
+          </div>
         )}
       </div>
 
