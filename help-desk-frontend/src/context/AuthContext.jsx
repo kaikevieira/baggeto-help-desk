@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, useRef } from "react";
 import { login as apiLogin, logout as apiLogout, refresh as apiRefresh, me as apiMe } from "../api/auth";
 import { updateMyTheme } from "../api/users";
+import { debugCookies } from "../utils/cookieDebug";
+import { testIOSCookies, forceIOSCookies } from "../utils/iosCookieHelper";
 
 const AuthCtx = createContext(null);
 
@@ -93,6 +95,15 @@ export function AuthProvider({ children }) {
         // Delay específico para iOS para garantir que cookies sejam processados
         if (isIOS) {
           await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Testa se cookies funcionam no iOS
+          const cookiesWork = testIOSCookies();
+          if (!cookiesWork) {
+            console.warn('🚨 iOS: Cookies não estão funcionando, forçando...');
+            await forceIOSCookies();
+          }
+          
+          debugCookies(); // Debug inicial no iOS
         }
 
         // Log device info for debugging
@@ -189,10 +200,14 @@ export function AuthProvider({ children }) {
         if (isIOS) {
           await new Promise(resolve => setTimeout(resolve, 2000));
           
+          // Debug cookies no iOS após login
+          debugCookies();
+          
           // Verifica se o usuário ainda está válido após o delay
           try {
             await apiMe();
           } catch (verifyError) {
+            console.log('iOS: Verificação pós-login falhou, tentando refresh');
             // Se falhar, tenta refresh uma vez
             await apiRefresh();
           }
