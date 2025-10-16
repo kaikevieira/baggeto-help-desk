@@ -13,6 +13,9 @@ export const corsMiddleware = cors({
   },
   credentials: true,
   methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type','Authorization','Idempotency-Key','Cache-Control','Pragma','Accept'],
-  optionsSuccessStatus: 200 // para iOS Safari
+  allowedHeaders: ['Content-Type','Authorization','Idempotency-Key','Cache-Control','Pragma','Accept','User-Agent'],
+  exposedHeaders: ['Set-Cookie'],
+  optionsSuccessStatus: 200, // para iOS Safari
+  preflightContinue: false,
+  maxAge: 86400 // 24 horas
 });

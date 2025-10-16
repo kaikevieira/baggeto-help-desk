@@ -38,9 +38,9 @@ export const authController = {
       const baseCookie = {
         httpOnly: true,
         secure: isProd || ENV.COOKIE_SECURE, // exige HTTPS quando em produção
-        sameSite: isIOS ? 'strict' : (isProd ? 'none' : 'lax'), // sempre strict para iOS
+        sameSite: isIOS ? 'none' : (isProd ? 'none' : 'lax'), // none para iOS em CORS
         path: '/',
-        domain: isIOS ? undefined : domain, // Remove domain para iOS
+        domain: undefined, // Remove domain para melhor compatibilidade iOS
       };
       
       res
@@ -69,9 +69,9 @@ export const authController = {
       const baseCookie = {
         httpOnly: true,
         secure: isProd || ENV.COOKIE_SECURE,
-        sameSite: isIOS ? 'strict' : (isProd ? 'none' : 'lax'), // sempre strict para iOS
+        sameSite: isIOS ? 'none' : (isProd ? 'none' : 'lax'), // none para iOS em CORS
         path: '/',
-        domain: isIOS ? undefined : domain,
+        domain: undefined, // Remove domain para melhor compatibilidade iOS
       };
       
   res.cookie('access_token', accessToken, { ...baseCookie, maxAge: 1000 * 60 * 15 }).json({ ok: true });

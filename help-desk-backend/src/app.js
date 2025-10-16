@@ -2,6 +2,7 @@ import express from 'express';
 import cookieParser from 'cookie-parser';
 import { corsMiddleware } from './config/cors.js';
 import { errorHandler } from './middlewares/error.js';
+import iosCookieMiddleware from './middlewares/iosCookie.js';
 import authRoutes from './routes/auth.routes.js';
 import userRoutes from './routes/user.routes.js';
 import ticketRoutes from './routes/ticket.routes.js';
@@ -20,6 +21,7 @@ app.set('trust proxy', 1);
 app.use(corsMiddleware);
 app.use(express.json());
 app.use(cookieParser());
+app.use(iosCookieMiddleware);
 
 // Rate limit global (exclui SSE de notificações)
 app.use(rateLimitMiddleware);

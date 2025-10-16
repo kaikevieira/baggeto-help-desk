@@ -10,9 +10,9 @@ export const cookieTestController = {
     const testCookie = {
       httpOnly: true,
       secure: isProd || ENV.COOKIE_SECURE,
-      sameSite: isIOS ? 'strict' : (isProd ? 'none' : 'lax'),
+      sameSite: isIOS ? 'none' : (isProd ? 'none' : 'lax'), // none para iOS
       path: '/',
-      domain: isIOS ? undefined : ENV.COOKIE_DOMAIN,
+      domain: undefined, // Remove domain para melhor compatibilidade
       maxAge: 1000 * 60 * 5 // 5 minutos
     };
     
