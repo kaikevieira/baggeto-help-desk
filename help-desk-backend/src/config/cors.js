@@ -13,5 +13,6 @@ export const corsMiddleware = cors({
   },
   credentials: true,
   methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type','Authorization','Idempotency-Key']
+  allowedHeaders: ['Content-Type','Authorization','Idempotency-Key','Cache-Control','Pragma','Accept'],
+  optionsSuccessStatus: 200 // para iOS Safari
 });

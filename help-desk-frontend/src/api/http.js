@@ -30,7 +30,7 @@ async function refreshToken() {
   
   console.log('🔄 Attempting token refresh...', { isIOS, baseUrl: BASE_URL });
   
-  refreshPromise = fetch(`${BASE_URL}/auth/refresh`, {
+  refreshPromise = fetchWithTimeout(`${BASE_URL}/auth/refresh`, {
     method: "POST",
     credentials: "include",
     headers: { 
@@ -38,10 +38,11 @@ async function refreshToken() {
       // Headers específicos para iOS
       ...(isIOS && {
         "Cache-Control": "no-cache",
-        "Pragma": "no-cache"
+        "Pragma": "no-cache",
+        "Accept": "application/json, text/plain, */*"
       })
     }
-  });
+  }, isIOS ? 60000 : 30000); // 60s timeout para iOS, 30s para outros
 
   try {
     const res = await refreshPromise;
@@ -79,7 +80,8 @@ export async function apiFetch(path, { method = "GET", headers = {}, body, param
       // Headers específicos para iOS
       ...(isIOS && {
         "Cache-Control": "no-cache",
-        "Pragma": "no-cache"
+        "Pragma": "no-cache",
+        "Accept": "application/json, text/plain, */*"
       }),
       ...headers 
     },
@@ -93,7 +95,7 @@ export async function apiFetch(path, { method = "GET", headers = {}, body, param
     opts.body = typeof body === "string" ? body : JSON.stringify(body);
   }
 
-  const res = await fetch(url, opts);
+  const res = await fetchWithTimeout(url, opts, isIOS ? 60000 : 30000);
   const isJson = res.headers.get("content-type")?.includes("application/json");
   const data = isJson ? await res.json() : await res.text();
 
