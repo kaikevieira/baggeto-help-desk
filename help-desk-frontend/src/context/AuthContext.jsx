@@ -4,12 +4,26 @@ import { updateMyTheme } from "../api/users";
 
 const AuthCtx = createContext(null);
 
+// Função para detectar iOS
+const isIOSDevice = () => {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+};
+
+// Função para detectar Safari
+const isSafari = () => {
+  return /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+};
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem("auth_user") || "null"); } catch { return null; }
   });
   const [initializing, setInitializing] = useState(true);
+  const [authRetryCount, setAuthRetryCount] = useState(0);
   const refreshTimerRef = useRef(null);
+  const isIOS = isIOSDevice();
+  const deviceInfo = { isIOS, isSafari: isSafari() };
 
   // Função para configurar refresh preventivo
   const setupRefreshTimer = () => {
@@ -18,20 +32,30 @@ export function AuthProvider({ children }) {
       clearInterval(refreshTimerRef.current);
     }
 
-    // Refresh a cada 14 minutos (1 minuto antes de expirar)
+    // Para iOS, usa refresh mais frequente (10 minutos) para compensar possíveis problemas
+    const refreshInterval = isIOS ? 10 * 60 * 1000 : 14 * 60 * 1000;
+    
     refreshTimerRef.current = setInterval(async () => {
       if (user) {
         try {
           await apiRefresh();
-          console.log('Token refreshed preventively');
+          console.log(`Token refreshed preventively (${deviceInfo.isIOS ? 'iOS' : 'other'})`);
+          setAuthRetryCount(0); // Reset retry count on success
         } catch (error) {
           console.error('Preventive refresh failed:', error);
-          // Se refresh preventivo falhar, faz logout
-          setUser(null);
-          localStorage.removeItem("auth_user");
+          setAuthRetryCount(prev => prev + 1);
+          
+          // Para iOS, tenta mais vezes antes de deslogar
+          const maxRetries = isIOS ? 3 : 1;
+          if (authRetryCount >= maxRetries) {
+            console.warn(`Max auth retries reached (${authRetryCount}), logging out`);
+            setUser(null);
+            localStorage.removeItem("auth_user");
+            setAuthRetryCount(0);
+          }
         }
       }
-    }, 14 * 60 * 1000); // 14 minutos
+    }, refreshInterval);
   };
 
   // Limpa timer quando componente desmonta
@@ -58,11 +82,15 @@ export function AuthProvider({ children }) {
     
     (async () => {
       try {
-        // Timeout de segurança: se não resolver em 10 segundos, para a inicialização
+        // Timeout mais longo para iOS devido a possível latência
+        const timeoutDuration = isIOS ? 15000 : 10000;
         timeoutId = setTimeout(() => {
-          console.warn('Auth initialization timeout');
+          console.warn(`Auth initialization timeout (${deviceInfo.isIOS ? 'iOS' : 'other'})`);
           setInitializing(false);
-        }, 10000);
+        }, timeoutDuration);
+
+        // Log device info for debugging
+        console.log('Auth initializing:', deviceInfo);
 
         // Se já tem usuário no localStorage, verifica se é válido
         if (user) {
@@ -70,14 +98,18 @@ export function AuthProvider({ children }) {
             // Tenta fazer uma requisição para verificar se token ainda é válido
             await apiMe();
             // Se chegou aqui, token é válido, não precisa fazer nada
+            console.log('Existing token is valid');
           } catch (error) {
+            console.log('Existing token invalid, trying refresh');
             // Token inválido, tenta refresh
             try {
               await apiRefresh();
               const { user: userData } = await apiMe();
               setUser(userData);
               localStorage.setItem("auth_user", JSON.stringify(userData));
+              console.log('Token refreshed successfully');
             } catch (refreshError) {
+              console.warn('Refresh failed, clearing auth:', refreshError.message);
               // Refresh falhou, remove dados inválidos
               localStorage.removeItem("auth_user");
               setUser(null);
@@ -90,10 +122,12 @@ export function AuthProvider({ children }) {
             const { user: userData } = await apiMe();
             setUser(userData);
             localStorage.setItem("auth_user", JSON.stringify(userData));
+            console.log('Session restored from cookies');
           } catch (_) {
             // Sem sessão válida, garante que localStorage está limpo
             localStorage.removeItem("auth_user");
             setUser(null);
+            console.log('No valid session found');
           }
         }
       } catch (error) {
@@ -119,19 +153,33 @@ export function AuthProvider({ children }) {
     user,
     initializing,
     async login(username, password) {
-      const { user: u } = await apiLogin(username, password);
-      setUser(u);
-      localStorage.setItem("auth_user", JSON.stringify(u));
-      return u;
+      try {
+        const { user: u } = await apiLogin(username, password);
+        setUser(u);
+        localStorage.setItem("auth_user", JSON.stringify(u));
+        setAuthRetryCount(0); // Reset retry count on successful login
+        console.log(`Login successful (${deviceInfo.isIOS ? 'iOS' : 'other'})`);
+        return u;
+      } catch (error) {
+        console.error('Login failed:', error);
+        throw error;
+      }
     },
     async logout() {
-      try { await apiLogout(); } catch {}
+      try { 
+        await apiLogout(); 
+        console.log('Logout API call successful');
+      } catch (error) {
+        console.error('Logout API call failed:', error);
+      }
       setUser(null);
       localStorage.removeItem("auth_user");
+      setAuthRetryCount(0);
       if (refreshTimerRef.current) {
         clearInterval(refreshTimerRef.current);
         refreshTimerRef.current = null;
       }
+      console.log(`Logout completed (${deviceInfo.isIOS ? 'iOS' : 'other'})`);
     },
     async setTheme(theme) {
       if (!user) return;
