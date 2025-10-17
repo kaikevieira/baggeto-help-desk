@@ -17,8 +17,6 @@ export const iosCookieMiddleware = (req, res, next) => {
         path: '/'
       };
       
-      console.log(`🍪 iOS Cookie Set: ${name}`, iosOptions);
-      
       return originalCookie(name, value, iosOptions);
     };
     
