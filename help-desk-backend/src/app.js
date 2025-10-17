@@ -9,7 +9,6 @@ import ticketRoutes from './routes/ticket.routes.js';
 import dashboardRoutes from './routes/dashboard.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
 import templateRoutes from './routes/template.routes.js';
-import cookieTestRoutes from './routes/cookieTest.routes.js';
 import { idempotencyMiddleware } from './middlewares/idempotency.js';
 import { rateLimitMiddleware } from './middlewares/rateLimit.js';
 
@@ -41,7 +40,6 @@ app.use('/tickets', ticketRoutes);
 app.use('/dashboard', dashboardRoutes);
 app.use('/notifications', notificationRoutes);
 app.use('/templates', templateRoutes);
-app.use('/cookie-test', cookieTestRoutes);
 
 // Error handler central
 app.use(errorHandler);
