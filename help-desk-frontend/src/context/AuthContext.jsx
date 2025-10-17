@@ -1,8 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, useRef } from "react";
 import { login as apiLogin, logout as apiLogout, refresh as apiRefresh, me as apiMe } from "../api/auth";
 import { updateMyTheme } from "../api/users";
-import { debugCookies } from "../utils/cookieDebug";
-import { testIOSCookies, forceIOSCookies } from "../utils/iosCookieHelper";
 
 const AuthCtx = createContext(null);
 
@@ -22,9 +20,6 @@ export function AuthProvider({ children }) {
     try { return JSON.parse(localStorage.getItem("auth_user") || "null"); } catch { return null; }
   });
   const [initializing, setInitializing] = useState(true);
-  const [authRetryCount, setAuthRetryCount] = useState(0);
-  const [iosAuthComplete, setIosAuthComplete] = useState(false);
-  const [isValidating, setIsValidating] = useState(false);
   const refreshTimerRef = useRef(null);
   const isIOS = isIOSDevice();
   const deviceInfo = { isIOS, isSafari: isSafari() };
@@ -95,22 +90,10 @@ export function AuthProvider({ children }) {
         // Delay específico para iOS para garantir que cookies sejam processados
         if (isIOS) {
           await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          // Testa se cookies funcionam no iOS
-          const cookiesWork = testIOSCookies();
-          if (!cookiesWork) {
-            console.warn('🚨 iOS: Cookies não estão funcionando, forçando...');
-            await forceIOSCookies();
-          }
-          
-          debugCookies(); // Debug inicial no iOS
         }
 
-        // Log device info for debugging
-        
         // Se já tem usuário no localStorage, verifica se é válido
-        if (user && !isValidating) {
-          setIsValidating(true);
+        if (user) {
           try {
             // Para iOS, aguarda mais tempo antes de validar
             if (isIOS) {
@@ -128,30 +111,12 @@ export function AuthProvider({ children }) {
               setUser(userData);
               localStorage.setItem("auth_user", JSON.stringify(userData));
             } catch (refreshError) {
-              // Para iOS, tenta mais uma vez após delay
-              if (isIOS && authRetryCount < 2) {
-                setAuthRetryCount(prev => prev + 1);
-                await new Promise(resolve => setTimeout(resolve, 3000));
-                try {
-                  await apiRefresh();
-                  const { user: userData } = await apiMe();
-                  setUser(userData);
-                  localStorage.setItem("auth_user", JSON.stringify(userData));
-                } catch (finalError) {
-                  // Refresh falhou definitivamente, remove dados inválidos
-                  localStorage.removeItem("auth_user");
-                  setUser(null);
-                }
-              } else {
-                // Refresh falhou, remove dados inválidos
-                localStorage.removeItem("auth_user");
-                setUser(null);
-              }
+              // Refresh falhou, remove dados inválidos
+              localStorage.removeItem("auth_user");
+              setUser(null);
             }
-          } finally {
-            setIsValidating(false);
           }
-        } else if (!user) {
+        } else {
           // Não tem usuário, tenta verificar se há sessão válida
           try {
             await apiRefresh();
@@ -171,10 +136,6 @@ export function AuthProvider({ children }) {
       } finally {
         clearTimeout(timeoutId);
         setInitializing(false);
-        // Marca que o iOS terminou o processo de autenticação
-        if (isIOS) {
-          setTimeout(() => setIosAuthComplete(true), 1000);
-        }
       }
     })();
 
@@ -188,35 +149,28 @@ export function AuthProvider({ children }) {
 
   const value = useMemo(() => ({
     user,
-    initializing: initializing || (isIOS && !iosAuthComplete),
+    initializing,
     async login(username, password) {
       try {
         const { user: u } = await apiLogin(username, password);
         setUser(u);
         localStorage.setItem("auth_user", JSON.stringify(u));
-        setAuthRetryCount(0); // Reset retry count on successful login
         
         // Delay específico para iOS para garantir que cookies sejam definidos
         if (isIOS) {
           await new Promise(resolve => setTimeout(resolve, 2000));
           
-          // Debug cookies no iOS após login
-          debugCookies();
-          
           // Verifica se o usuário ainda está válido após o delay
           try {
             await apiMe();
           } catch (verifyError) {
-            console.log('iOS: Verificação pós-login falhou, tentando refresh');
             // Se falhar, tenta refresh uma vez
             await apiRefresh();
           }
         }
         
-        console.log(`Login successful (${deviceInfo.isIOS ? 'iOS' : 'other'})`);
         return u;
       } catch (error) {
-        console.error('Login failed:', error);
         throw error;
       }
     },
@@ -243,7 +197,7 @@ export function AuthProvider({ children }) {
       localStorage.setItem("auth_user", JSON.stringify(updated));
       return updated;
     }
-  }), [user, initializing, iosAuthComplete, isIOS]);
+  }), [user, initializing]);
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }
