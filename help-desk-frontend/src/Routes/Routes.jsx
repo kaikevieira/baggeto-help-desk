@@ -8,7 +8,6 @@ import Team from "../pages/Team";
 import TicketDetails from "../pages/TicketDetails";
 import TicketNew from "../pages/TicketNew";
 import Tickets from "../pages/Tickets";
-import IOSCookieTest from "../components/IOSCookieTest";
 
 const MainRoutes = () => {
   const { user } = useAuth();
@@ -17,7 +16,6 @@ const MainRoutes = () => {
     <Routes>
       {/* pública */}
       <Route path="/login" element={<Login />} />
-      <Route path="/ios-test" element={<IOSCookieTest />} />
 
       {/* protegidas */}
       <Route element={<PrivateRoute />}>
