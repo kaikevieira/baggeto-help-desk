@@ -4,12 +4,6 @@ export const BASE_URL = isDevelopment
   ? "http://localhost:4000" 
   : "https://api.chamados.transportesbaggeto.com.br";
 
-console.log('🌐 Environment detected:', { 
-  isDevelopment, 
-  hostname: window.location.hostname, 
-  baseUrl: BASE_URL 
-});
-
 // Flag para evitar múltiplos refreshes simultâneos
 let isRefreshing = false;
 let refreshPromise = null;
@@ -38,8 +32,6 @@ async function refreshToken() {
   isRefreshing = true;
   const isIOS = isIOSDevice();
   
-  console.log('🔄 Attempting token refresh...', { isIOS, baseUrl: BASE_URL });
-  
   refreshPromise = fetchWithTimeout(`${BASE_URL}/auth/refresh`, {
     method: "POST",
     credentials: "include",
@@ -56,15 +48,12 @@ async function refreshToken() {
 
   try {
     const res = await refreshPromise;
-    console.log('🔄 Refresh response:', { status: res.status, ok: res.ok });
     if (!res.ok) {
       throw new Error(`Refresh falhou: ${res.status} ${res.statusText}`);
     }
     const result = await res.json();
-    console.log('✅ Token refresh successful');
     return result;
   } catch (error) {
-    console.error('❌ Token refresh failed:', error);
     throw error;
   } finally {
     isRefreshing = false;
@@ -109,23 +98,13 @@ export async function apiFetch(path, { method = "GET", headers = {}, body, param
   const isJson = res.headers.get("content-type")?.includes("application/json");
   const data = isJson ? await res.json() : await res.text();
 
-  console.log(`🌐 API Request: ${method} ${path}`, { 
-    status: res.status, 
-    ok: res.ok,
-    credentials: opts.credentials,
-    isIOS 
-  });
-
   // Se token expirou (401) e não é uma rota de auth, tenta refresh
   if (res.status === 401 && !_isRetry && !path.includes('/auth/')) {
-    console.log('🔑 Token expired, attempting refresh...');
     try {
       await refreshToken();
-      console.log('🔄 Retrying original request...');
       // Retry a requisição original
       return apiFetch(path, { method, headers, body, params, _isRetry: true });
     } catch (refreshError) {
-      console.error('❌ Refresh failed, redirecting to login:', refreshError);
       // Se refresh falhou, redireciona para login
       if (typeof window !== 'undefined') {
         localStorage.removeItem("auth_user");
